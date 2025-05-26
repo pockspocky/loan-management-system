@@ -8,14 +8,25 @@
       </div>
       <div class="header-right">
         <div class="user-info">
-          <span>欢迎，管理员</span>
-          <button @click="logout" class="logout-btn">退出登录</button>
+          <span>欢迎，{{ currentUser?.username || '管理员' }}</span>
+          <button @click="logout" class="logout-btn" :disabled="isLoading">退出登录</button>
         </div>
       </div>
     </header>
 
     <!-- 主要内容区域 -->
     <div class="dashboard-content">
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="loading-spinner">加载中...</div>
+      </div>
+      
+      <!-- 错误提示 -->
+      <div v-if="error" class="error-banner">
+        {{ error }}
+        <button @click="error = null" class="close-error">×</button>
+      </div>
+
       <!-- 侧边栏 -->
       <aside class="sidebar">
         <nav class="nav-menu">
@@ -312,23 +323,36 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useAuthStore } from '../stores/authStore.js'
+import { loanService } from '../services/loanService.js'
+import { userService } from '../services/userService.js'
 
 export default {
   name: 'AdminDashboard',
-  emits: ['logout'],
+  emits: ['go-to-login'],
   setup(props, { emit }) {
+    const authStore = useAuthStore()
+    
+    // 响应式数据
     const activeTab = ref('overview')
-    
-    // 模态框状态
     const showAddLoanModal = ref(false)
-    const showViewLoanModal = ref(false)
-    const showEditLoanModal = ref(false)
+    const isLoading = ref(false)
+    const error = ref(null)
     
-    // 贷款相关数据
-    const selectedLoan = ref(null)
-    const editingLoan = ref(null)
-    const newLoan = ref({
+    // 数据状态
+    const loans = ref([])
+    const users = ref([])
+    const logs = ref([])
+    const statistics = ref({
+      totalLoans: 0,
+      pendingLoans: 0,
+      approvedLoans: 0,
+      totalUsers: 0
+    })
+    
+    // 新贷款表单数据
+    const newLoan = reactive({
       loanName: '',
       applicantName: '',
       amount: 0,
@@ -338,45 +362,215 @@ export default {
       repaymentMethod: ''
     })
     
+    // 菜单项
     const menuItems = [
-      { id: 'overview', text: '概览', icon: '📊' },
-      { id: 'users', text: '用户管理', icon: '👥' },
-      { id: 'logs', text: '系统日志', icon: '📋' }
+      { id: 'overview', icon: '📊', text: '贷款管理' },
+      { id: 'users', icon: '👥', text: '用户管理' },
+      { id: 'logs', icon: '📋', text: '系统日志' }
     ]
     
-    const users = ref([])
+    // 计算属性
+    const currentUser = computed(() => authStore.state.user)
     
-    const logs = ref([])
-    
-    const loans = ref([])
-    
-    const logout = () => {
-      emit('logout')
-    }
-    
-    const getLoanStatusText = (status) => {
-      switch (status) {
-        case 'pending':
-          return '待审批'
-        case 'approved':
-          return '已批准'
-        case 'completed':
-          return '已完成'
-        default:
-          return status
+    // 获取贷款列表
+    const fetchLoans = async () => {
+      isLoading.value = true
+      error.value = null
+      
+      try {
+        const result = await loanService.getLoans()
+        
+        if (result.success) {
+          loans.value = result.data.loans || []
+          // 更新统计信息
+          updateStatistics()
+        } else {
+          error.value = result.message
+          console.error('获取贷款列表失败:', result.message)
+        }
+      } catch (err) {
+        error.value = '获取贷款列表失败'
+        console.error('获取贷款列表错误:', err)
+      } finally {
+        isLoading.value = false
       }
     }
     
-    // CRUD 方法
-    const addLoan = () => {
-      const loan = {
-        id: Date.now(),
-        ...newLoan.value,
-        status: 'pending',
-        applicationDate: new Date().toISOString().split('T')[0]
+    // 获取用户列表
+    const fetchUsers = async () => {
+      isLoading.value = true
+      error.value = null
+      
+      try {
+        const result = await userService.getUsers()
+        
+        if (result.success) {
+          users.value = result.data.users || []
+        } else {
+          error.value = result.message
+          console.error('获取用户列表失败:', result.message)
+        }
+      } catch (err) {
+        error.value = '获取用户列表失败'
+        console.error('获取用户列表错误:', err)
+      } finally {
+        isLoading.value = false
       }
-      loans.value.push(loan)
-      newLoan.value = {
+    }
+    
+    // 获取统计信息
+    const fetchStatistics = async () => {
+      try {
+        const result = await loanService.getLoanStatistics()
+        
+        if (result.success) {
+          statistics.value = result.data
+        }
+      } catch (err) {
+        console.error('获取统计信息错误:', err)
+      }
+    }
+    
+    // 更新统计信息（基于本地数据）
+    const updateStatistics = () => {
+      statistics.value.totalLoans = loans.value.length
+      statistics.value.pendingLoans = loans.value.filter(loan => loan.status === 'pending').length
+      statistics.value.approvedLoans = loans.value.filter(loan => loan.status === 'approved').length
+    }
+    
+    // 添加贷款
+    const addLoan = async () => {
+      if (!validateLoanForm()) return
+      
+      isLoading.value = true
+      
+      try {
+        const result = await loanService.createLoan({
+          ...newLoan,
+          applicant_id: currentUser.value?.id || 1, // 临时使用当前用户ID
+          status: 'pending'
+        })
+        
+        if (result.success) {
+          // 重新获取贷款列表
+          await fetchLoans()
+          
+          // 重置表单
+          resetLoanForm()
+          showAddLoanModal.value = false
+          
+          alert('贷款添加成功！')
+        } else {
+          alert(`添加失败: ${result.message}`)
+        }
+      } catch (err) {
+        alert('添加贷款失败，请稍后重试')
+        console.error('添加贷款错误:', err)
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // 审批贷款
+    const approveLoan = async (loan) => {
+      const action = confirm(`确定要审批贷款 "${loan.loanName}" 吗？`)
+      if (!action) return
+      
+      isLoading.value = true
+      
+      try {
+        const result = await loanService.approveLoan(loan.id, {
+          status: 'approved',
+          approved_by: currentUser.value?.id,
+          approved_at: new Date().toISOString()
+        })
+        
+        if (result.success) {
+          // 重新获取贷款列表
+          await fetchLoans()
+          alert('贷款审批成功！')
+        } else {
+          alert(`审批失败: ${result.message}`)
+        }
+      } catch (err) {
+        alert('审批失败，请稍后重试')
+        console.error('审批贷款错误:', err)
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // 删除贷款
+    const deleteLoan = async (loan) => {
+      const confirmed = confirm(`确定要删除贷款 "${loan.loanName}" 吗？此操作不可撤销。`)
+      if (!confirmed) return
+      
+      isLoading.value = true
+      
+      try {
+        const result = await loanService.deleteLoan(loan.id)
+        
+        if (result.success) {
+          // 重新获取贷款列表
+          await fetchLoans()
+          alert('贷款删除成功！')
+        } else {
+          alert(`删除失败: ${result.message}`)
+        }
+      } catch (err) {
+        alert('删除失败，请稍后重试')
+        console.error('删除贷款错误:', err)
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // 查看贷款详情
+    const viewLoan = (loan) => {
+      alert(`查看贷款详情功能待实现\n贷款ID: ${loan.id}\n贷款名称: ${loan.loanName}`)
+    }
+    
+    // 编辑贷款
+    const editLoan = (loan) => {
+      alert(`编辑贷款功能待实现\n贷款ID: ${loan.id}\n贷款名称: ${loan.loanName}`)
+    }
+    
+    // 验证贷款表单
+    const validateLoanForm = () => {
+      if (!newLoan.loanName.trim()) {
+        alert('请输入贷款名称')
+        return false
+      }
+      if (!newLoan.applicantName.trim()) {
+        alert('请输入申请人姓名')
+        return false
+      }
+      if (newLoan.amount <= 0) {
+        alert('请输入有效的贷款金额')
+        return false
+      }
+      if (newLoan.interestRate <= 0) {
+        alert('请输入有效的年利率')
+        return false
+      }
+      if (!newLoan.bank.trim()) {
+        alert('请输入贷款银行')
+        return false
+      }
+      if (newLoan.term <= 0) {
+        alert('请输入有效的还款期限')
+        return false
+      }
+      if (!newLoan.repaymentMethod) {
+        alert('请选择还款方式')
+        return false
+      }
+      return true
+    }
+    
+    // 重置贷款表单
+    const resetLoanForm = () => {
+      Object.assign(newLoan, {
         loanName: '',
         applicantName: '',
         amount: 0,
@@ -384,64 +578,72 @@ export default {
         bank: '',
         term: 0,
         repaymentMethod: ''
+      })
+    }
+    
+    // 获取贷款状态文本
+    const getLoanStatusText = (status) => {
+      const statusMap = {
+        pending: '待审批',
+        approved: '已批准',
+        rejected: '已拒绝',
+        completed: '已完成'
       }
-      showAddLoanModal.value = false
+      return statusMap[status] || status
     }
     
-    const viewLoan = (loan) => {
-      selectedLoan.value = loan
-      showViewLoanModal.value = true
+    // 登出
+    const logout = async () => {
+      const confirmed = confirm('确定要退出登录吗？')
+      if (!confirmed) return
+      
+      await authStore.logout()
+      emit('go-to-login')
     }
     
-    const editLoan = (loan) => {
-      editingLoan.value = { ...loan }
-      showEditLoanModal.value = true
-    }
-    
-    const updateLoan = () => {
-      const index = loans.value.findIndex(loan => loan.id === editingLoan.value.id)
-      if (index !== -1) {
-        loans.value[index] = { ...editingLoan.value }
+    // 组件挂载时初始化数据
+    onMounted(async () => {
+      // 检查用户权限
+      if (!authStore.isAdmin.value) {
+        alert('权限不足，请使用管理员账户登录')
+        emit('go-to-login')
+        return
       }
-      showEditLoanModal.value = false
-      editingLoan.value = null
-    }
-    
-    const deleteLoan = (loan) => {
-      if (confirm(`确定要删除 "${loan.loanName}" 这个贷款申请吗？`)) {
-        const index = loans.value.findIndex(l => l.id === loan.id)
-        if (index !== -1) {
-          loans.value.splice(index, 1)
-        }
-      }
-    }
-    
-    const approveLoan = (loan) => {
-      if (confirm(`确定要批准 "${loan.loanName}" 这个贷款申请吗？`)) {
-        loan.status = 'approved'
-      }
-    }
+      
+      // 获取初始数据
+      await Promise.all([
+        fetchLoans(),
+        fetchUsers(),
+        fetchStatistics()
+      ])
+    })
     
     return {
+      // 响应式数据
       activeTab,
       showAddLoanModal,
-      showViewLoanModal,
-      showEditLoanModal,
-      selectedLoan,
-      editingLoan,
-      newLoan,
-      menuItems,
+      isLoading,
+      error,
+      loans,
       users,
       logs,
-      loans,
-      logout,
-      getLoanStatusText,
+      statistics,
+      newLoan,
+      menuItems,
+      
+      // 计算属性
+      currentUser,
+      
+      // 方法
       addLoan,
+      approveLoan,
+      deleteLoan,
       viewLoan,
       editLoan,
-      updateLoan,
-      deleteLoan,
-      approveLoan
+      getLoanStatusText,
+      logout,
+      fetchLoans,
+      fetchUsers
     }
   }
 }
@@ -1002,5 +1204,59 @@ export default {
     flex-direction: row;
     overflow-x: auto;
   }
+}
+
+/* 加载状态样式 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  background: #667eea;
+  color: white;
+  padding: 20px 40px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 错误提示样式 */
+.error-banner {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 20px;
+  position: relative;
+  font-size: 14px;
+}
+
+.close-error {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #c33;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style> 

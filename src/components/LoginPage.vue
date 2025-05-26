@@ -16,6 +16,12 @@
         <p>请登录您的账户</p>
       </div>
       
+      <!-- 错误提示 -->
+      <div v-if="authStore.state.error" class="error-message">
+        {{ authStore.state.error }}
+        <button @click="authStore.clearError" class="close-error">×</button>
+      </div>
+      
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="input-group">
           <label for="username">用户名</label>
@@ -25,6 +31,7 @@
             type="text"
             placeholder="请输入用户名"
             required
+            :disabled="authStore.state.isLoading"
           />
         </div>
         
@@ -36,15 +43,33 @@
             type="password"
             placeholder="请输入密码"
             required
+            :disabled="authStore.state.isLoading"
           />
+        </div>
+        
+        <div class="input-group">
+          <label for="role">用户类型</label>
+          <select
+            id="role"
+            v-model="formData.role"
+            :disabled="authStore.state.isLoading"
+          >
+            <option value="user">普通用户</option>
+            <option value="admin">管理员</option>
+          </select>
         </div>
         
         <div class="forgot-password">
           <a href="#" @click.prevent="handleForgotPassword">忘记密码？</a>
         </div>
         
-        <button type="submit" class="login-btn" :disabled="!isFormValid">
-          登录
+        <button 
+          type="submit" 
+          class="login-btn" 
+          :disabled="!isFormValid || authStore.state.isLoading"
+        >
+          <span v-if="authStore.state.isLoading">登录中...</span>
+          <span v-else>登录</span>
         </button>
       </form>
       
@@ -58,25 +83,53 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '../stores/authStore.js'
 
 export default {
   name: 'LoginPage',
-  emits: ['switch-to-register', 'go-to-admin', 'go-to-user'],
+  emits: ['switch-to-register', 'go-to-admin', 'go-to-user', 'login-success'],
   setup(props, { emit }) {
+    const authStore = useAuthStore()
+    
     const formData = ref({
       username: '',
-      password: ''
+      password: '',
+      role: 'user'
     })
     
     const isFormValid = computed(() => {
-      return formData.value.username.length > 0 && formData.value.password.length > 0
+      return formData.value.username.length > 0 && 
+             formData.value.password.length > 0
     })
     
-    const handleLogin = () => {
-      if (isFormValid.value) {
-        console.log('登录信息:', formData.value)
-        alert(`欢迎，${formData.value.username}！登录功能待后端实现。`)
+    const handleLogin = async () => {
+      if (!isFormValid.value) return
+      
+      authStore.clearError()
+      
+      const result = await authStore.login({
+        username: formData.value.username,
+        password: formData.value.password,
+        role: formData.value.role
+      })
+      
+      if (result.success) {
+        // 登录成功，根据用户角色跳转
+        emit('login-success', result.data.user)
+        
+        if (result.data.user.role === 'admin') {
+          emit('go-to-admin')
+        } else {
+          emit('go-to-user')
+        }
+        
+        // 清空表单
+        formData.value = {
+          username: '',
+          password: '',
+          role: 'user'
+        }
       }
     }
     
@@ -85,16 +138,29 @@ export default {
     }
     
     const goToAdminDashboard = () => {
-      // 跳转到管理员仪表盘
       emit('go-to-admin')
     }
     
     const goToUserDashboard = () => {
-      // 跳转到用户仪表盘
       emit('go-to-user')
     }
     
+    // 组件挂载时初始化认证状态
+    onMounted(() => {
+      authStore.initAuth()
+      
+      // 如果已经登录，自动跳转
+      if (authStore.state.isAuthenticated) {
+        if (authStore.isAdmin.value) {
+          emit('go-to-admin')
+        } else {
+          emit('go-to-user')
+        }
+      }
+    })
+    
     return {
+      authStore,
       formData,
       isFormValid,
       handleLogin,
@@ -164,7 +230,8 @@ export default {
   font-size: 14px;
 }
 
-.input-group input {
+.input-group input,
+.input-group select {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #e1e8ed;
@@ -174,10 +241,17 @@ export default {
   background: #fff;
 }
 
-.input-group input:focus {
+.input-group input:focus,
+.input-group select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-group input:disabled,
+.input-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .forgot-password {
@@ -241,6 +315,36 @@ export default {
 .register-link a:hover {
   color: #764ba2;
   text-decoration: underline;
+}
+
+/* 错误提示样式 */
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  position: relative;
+  font-size: 14px;
+}
+
+.close-error {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #c33;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 响应式设计 */

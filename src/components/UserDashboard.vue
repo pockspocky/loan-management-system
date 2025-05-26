@@ -9,14 +9,25 @@
       <div class="header-right">
         <div class="user-info">
           <div class="avatar">👤</div>
-          <span>{{ userInfo.username }}</span>
-          <button @click="logout" class="logout-btn">退出登录</button>
+          <span>{{ currentUser?.username || '用户' }}</span>
+          <button @click="logout" class="logout-btn" :disabled="isLoading">退出登录</button>
         </div>
       </div>
     </header>
 
     <!-- 主要内容区域 -->
     <div class="dashboard-content">
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="loading-spinner">加载中...</div>
+      </div>
+      
+      <!-- 错误提示 -->
+      <div v-if="error" class="error-banner">
+        {{ error }}
+        <button @click="error = null" class="close-error">×</button>
+      </div>
+
       <!-- 侧边栏 -->
       <aside class="sidebar">
         <nav class="nav-menu">
@@ -131,7 +142,7 @@
         <div v-if="activeTab === 'profile'" class="profile-section">
           <div class="profile-header">
             <h2>个人资料</h2>
-            <button @click="editMode = !editMode" class="edit-btn">
+            <button @click="saveProfile" class="edit-btn" :disabled="isLoading">
               {{ editMode ? '保存' : '编辑' }}
             </button>
           </div>
@@ -219,7 +230,7 @@
                 <p>{{ task.description }}</p>
                 <div class="task-meta">
                   <span class="task-priority" :class="task.priority">
-                    {{ task.priority === 'high' ? '高优先级' : task.priority === 'medium' ? '中优先级' : '低优先级' }}
+                    {{ getTaskPriorityText(task.priority) }}
                   </span>
                   <span class="task-due">截止：{{ task.dueDate }}</span>
                 </div>
@@ -1365,5 +1376,59 @@ export default {
     flex-direction: column;
     gap: 20px;
   }
+}
+
+/* 加载状态样式 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  background: #4ecdc4;
+  color: white;
+  padding: 20px 40px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 错误提示样式 */
+.error-banner {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 20px;
+  position: relative;
+  font-size: 14px;
+}
+
+.close-error {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #c33;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style> 
