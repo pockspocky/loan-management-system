@@ -342,6 +342,22 @@
         </form>
       </div>
     </div>
+
+    <!-- 自定义确认对话框 -->
+    <div v-if="showConfirmDialog" class="modal-overlay">
+      <div class="confirm-dialog" @click.stop>
+        <div class="confirm-header">
+          <h3>{{ confirmDialog.title }}</h3>
+        </div>
+        <div class="confirm-content">
+          <p>{{ confirmDialog.message }}</p>
+        </div>
+        <div class="confirm-actions">
+          <button @click="handleCancel" class="cancel-btn">{{ confirmDialog.cancelText }}</button>
+          <button @click="handleConfirm" class="danger-btn">{{ confirmDialog.confirmText }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -367,6 +383,17 @@ export default {
     // 通知系统
     const notifications = ref([])
     let notificationId = 0
+    
+    // 确认对话框系统
+    const showConfirmDialog = ref(false)
+    const confirmDialog = reactive({
+      title: '',
+      message: '',
+      confirmText: '确定',
+      cancelText: '取消',
+      onConfirm: null,
+      onCancel: null
+    })
     
     // 数据状态
     const loans = ref([])
@@ -571,52 +598,58 @@ export default {
     
     // 审批贷款
     const approveLoan = async (loan) => {
-      const action = confirm(`确定要审批贷款 "${loan.loanName}" 吗？`)
-      if (!action) return
-      
-      isLoading.value = true
-      
-      try {
-        const result = await loanService.approveLoan(loan.id)
-        
-        if (result.success) {
-          // 重新获取贷款列表
-          await fetchLoans()
-          showNotification('贷款审批成功！', 'success')
-        } else {
-          showNotification(`审批失败: ${result.message}`, 'error')
+      showConfirm(
+        '确认审批',
+        `确定要审批贷款 "${loan.loanName}" 吗？`,
+        async () => {
+          isLoading.value = true
+          
+          try {
+            const result = await loanService.approveLoan(loan.id)
+            
+            if (result.success) {
+              // 重新获取贷款列表
+              await fetchLoans()
+              showNotification('贷款审批成功！', 'success')
+            } else {
+              showNotification(`审批失败: ${result.message}`, 'error')
+            }
+          } catch (err) {
+            showNotification('审批失败，请稍后重试', 'error')
+            console.error('审批贷款错误:', err)
+          } finally {
+            isLoading.value = false
+          }
         }
-      } catch (err) {
-        showNotification('审批失败，请稍后重试', 'error')
-        console.error('审批贷款错误:', err)
-      } finally {
-        isLoading.value = false
-      }
+      )
     }
     
     // 删除贷款
     const deleteLoan = async (loan) => {
-      const confirmed = confirm(`确定要删除贷款 "${loan.loanName}" 吗？此操作不可撤销。`)
-      if (!confirmed) return
-      
-      isLoading.value = true
-      
-      try {
-        const result = await loanService.deleteLoan(loan.id)
-        
-        if (result.success) {
-          // 重新获取贷款列表
-          await fetchLoans()
-          showNotification('贷款删除成功！', 'success')
-        } else {
-          showNotification(`删除失败: ${result.message}`, 'error')
+      showConfirm(
+        '确认删除',
+        `确定要删除贷款 "${loan.loanName}" 吗？此操作不可撤销。`,
+        async () => {
+          isLoading.value = true
+          
+          try {
+            const result = await loanService.deleteLoan(loan.id)
+            
+            if (result.success) {
+              // 重新获取贷款列表
+              await fetchLoans()
+              showNotification('贷款删除成功！', 'success')
+            } else {
+              showNotification(`删除失败: ${result.message}`, 'error')
+            }
+          } catch (err) {
+            showNotification('删除失败，请稍后重试', 'error')
+            console.error('删除贷款错误:', err)
+          } finally {
+            isLoading.value = false
+          }
         }
-      } catch (err) {
-        showNotification('删除失败，请稍后重试', 'error')
-        console.error('删除贷款错误:', err)
-      } finally {
-        isLoading.value = false
-      }
+      )
     }
     
     // 查看贷款详情
@@ -776,11 +809,14 @@ export default {
     
     // 登出
     const logout = async () => {
-      const confirmed = confirm('确定要退出登录吗？')
-      if (!confirmed) return
-      
-      await authStore.logout()
-      emit('go-to-login')
+      showConfirm(
+        '确认退出',
+        '确定要退出登录吗？',
+        async () => {
+          await authStore.logout()
+          emit('go-to-login')
+        }
+      )
     }
     
     // 组件挂载时初始化数据
@@ -827,6 +863,31 @@ export default {
       }
     }
     
+    // 显示确认对话框
+    const showConfirm = (title, message, onConfirm, onCancel = null) => {
+      confirmDialog.title = title
+      confirmDialog.message = message
+      confirmDialog.onConfirm = onConfirm
+      confirmDialog.onCancel = onCancel
+      showConfirmDialog.value = true
+    }
+    
+    // 确认对话框确定
+    const handleConfirm = () => {
+      if (confirmDialog.onConfirm) {
+        confirmDialog.onConfirm()
+      }
+      showConfirmDialog.value = false
+    }
+    
+    // 确认对话框取消
+    const handleCancel = () => {
+      if (confirmDialog.onCancel) {
+        confirmDialog.onCancel()
+      }
+      showConfirmDialog.value = false
+    }
+    
     return {
       // 响应式数据
       activeTab,
@@ -863,7 +924,14 @@ export default {
       // 通知系统
       notifications,
       showNotification,
-      removeNotification
+      removeNotification,
+      
+      // 确认对话框系统
+      showConfirmDialog,
+      confirmDialog,
+      showConfirm,
+      handleConfirm,
+      handleCancel
     }
   }
 }
@@ -1635,5 +1703,67 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 自定义确认对话框样式 */
+.confirm-dialog {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.confirm-header {
+  background: #f8f9fa;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.confirm-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.confirm-content {
+  padding: 24px;
+}
+
+.confirm-content p {
+  margin: 0;
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  background: #f8f9fa;
+  justify-content: flex-end;
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.danger-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
+}
+
+.cancel-btn:hover {
+  background: #d1d9e0;
 }
 </style> 
