@@ -400,13 +400,23 @@ export default {
         console.log('响应数据:', result.data)
         
         if (result.success) {
-          // 检查数据结构
-          if (result.data && Array.isArray(result.data)) {
-            loans.value = result.data
-            console.log('直接使用 result.data 数组:', result.data)
-          } else if (result.data && result.data.loans && Array.isArray(result.data.loans)) {
-            loans.value = result.data.loans
-            console.log('使用 result.data.loans 数组:', result.data.loans)
+          // 检查数据结构并转换字段名
+          if (result.data && result.data.items && Array.isArray(result.data.items)) {
+            // 转换下划线格式到驼峰格式
+            loans.value = result.data.items.map(loan => ({
+              id: loan._id,
+              loanName: loan.loan_name,
+              applicantName: loan.applicant_name,
+              amount: loan.amount,
+              interestRate: loan.interest_rate,
+              bank: loan.bank,
+              term: loan.term,
+              repaymentMethod: loan.repayment_method,
+              status: loan.status,
+              applicationDate: loan.created_at ? new Date(loan.created_at).toLocaleDateString() : '未知',
+              applicantId: loan.applicant_id?._id || loan.applicant_id
+            }))
+            console.log('使用 result.data.items 数组并转换格式:', loans.value)
           } else {
             console.warn('未预期的数据结构:', result.data)
             loans.value = []
