@@ -17,7 +17,7 @@ export default defineConfig({
   
   // 开发服务器配置
   server: {
-    port: 3000,
+    port: 3001,
     open: true,
     cors: true,
     host: '0.0.0.0'

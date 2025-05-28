@@ -325,8 +325,7 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
-import { loanService } from '../services/loanService.js'
-import { userService } from '../services/userService.js'
+import { loanService, userService } from '../services/index.js'
 
 export default {
   name: 'AdminDashboard',

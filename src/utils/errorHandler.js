@@ -1,86 +1,37 @@
 /**
  * 统一API错误处理
- * @param {Error} error - 错误对象
  */
 export function handleApiError(error) {
   console.error('API Error:', error);
   
   if (error.response) {
-    // 服务器响应的错误
     const { status, data } = error.response;
     
-    switch (status) {
-      case 400:
-        return {
-          success: false,
-          message: data.message || '请求参数错误',
-          errors: data.errors || {},
-          code: data.code
-        };
-        
-      case 401:
-        return {
-          success: false,
-          message: '登录已过期，请重新登录',
-          needLogin: true
-        };
-        
-      case 403:
-        return {
-          success: false,
-          message: '权限不足，无法执行此操作',
-          code: data.code
-        };
-        
-      case 404:
-        return {
-          success: false,
-          message: '请求的资源不存在',
-          code: data.code
-        };
-        
-      case 422:
-        return {
-          success: false,
-          message: data.message || '数据验证失败',
-          errors: data.errors || {},
-          code: data.code
-        };
-        
-      case 429:
-        return {
-          success: false,
-          message: '请求过于频繁，请稍后再试',
-          code: data.code
-        };
-        
-      case 500:
-        return {
-          success: false,
-          message: '服务器内部错误，请稍后再试',
-          code: data.code
-        };
-        
-      default:
-        return {
-          success: false,
-          message: data.message || `请求失败 (${status})`,
-          code: data.code
-        };
-    }
-  } else if (error.request) {
-    // 网络错误
+    const errorMessages = {
+      400: '请求参数错误',
+      401: '登录已过期，请重新登录',
+      403: '权限不足，无法执行此操作',
+      404: '请求的资源不存在',
+      422: '数据验证失败',
+      429: '请求过于频繁，请稍后再试',
+      500: '服务器内部错误，请稍后再试'
+    };
+    
     return {
       success: false,
-      message: '网络连接失败，请检查网络设置',
-      isNetworkError: true
+      message: data.message || errorMessages[status] || `请求失败 (${status})`,
+      errors: data.errors || {},
+      needLogin: status === 401
+    };
+  } else if (error.request) {
+    return {
+      success: false,
+      message: '网络连接失败，请检查网络设置'
     };
   } else {
-    // 其他错误
     return {
       success: false,
-      message: error.message || '未知错误',
-      isUnknownError: true
+      message: error.message || '未知错误'
     };
   }
 }
