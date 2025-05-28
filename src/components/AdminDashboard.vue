@@ -467,18 +467,18 @@ export default {
       
       try {
         const loanData = {
-          loanName: newLoan.loanName,
-          applicantName: newLoan.applicantName,
+          loan_name: newLoan.loanName,
+          applicant_name: newLoan.applicantName,
           amount: Number(newLoan.amount),
-          interestRate: Number(newLoan.interestRate),
+          interest_rate: Number(newLoan.interestRate),
           bank: newLoan.bank,
           term: Number(newLoan.term),
-          repaymentMethod: newLoan.repaymentMethod,
-          applicantId: currentUser.value?.id || 1,
+          repayment_method: newLoan.repaymentMethod,
+          applicant_id: currentUser.value?.id || currentUser.value?._id || 1,
           status: 'pending'
         }
         
-        console.log('发送贷款数据:', loanData)
+        console.log('发送贷款数据（下划线格式）:', loanData)
         console.log('当前用户:', currentUser.value)
         
         const result = await loanService.createLoan(loanData)

@@ -128,6 +128,15 @@ export const userService = {
     }
   },
 
+  async getUsers() {
+    try {
+      const response = await apiClient.get('/users');
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   async getAllUsers() {
     try {
       const response = await apiClient.get('/users');
@@ -206,6 +215,15 @@ export const loanService = {
   async rejectLoan(loanId, reason) {
     try {
       const response = await apiClient.post(`/loans/${loanId}/reject`, { reason });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async getLoanStatistics() {
+    try {
+      const response = await apiClient.get('/loans/statistics');
       return response.data;
     } catch (error) {
       return handleApiError(error);
