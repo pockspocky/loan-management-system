@@ -78,7 +78,7 @@
                     <td class="rate-col rate">{{ loan.interestRate }}%</td>
                     <td class="bank-col">{{ loan.bank }}</td>
                     <td class="term-col term">{{ loan.term }}个月</td>
-                    <td class="method-col repayment-method">{{ loan.repaymentMethod }}</td>
+                    <td class="method-col repayment-method">{{ getRepaymentMethodText(loan.repaymentMethod) }}</td>
                     <td class="status-col">
                       <span :class="['loan-status', loan.status]">
                         {{ getLoanStatusText(loan.status) }}
@@ -251,7 +251,7 @@
           </div>
           <div class="detail-item">
             <label>还款方式:</label>
-            <span>{{ selectedLoan.repaymentMethod }}</span>
+            <span>{{ getRepaymentMethodText(selectedLoan.repaymentMethod) }}</span>
           </div>
           <div class="detail-item">
             <label>申请状态:</label>
@@ -729,6 +729,15 @@ export default {
       return true
     }
     
+    // 获取还款方式中文文本
+    const getRepaymentMethodText = (method) => {
+      const methodMap = {
+        'equal_payment': '等额本息',
+        'equal_principal': '等额本金'
+      }
+      return methodMap[method] || method
+    }
+    
     // 获取贷款状态文本
     const getLoanStatusText = (status) => {
       const statusMap = {
@@ -794,6 +803,7 @@ export default {
       deleteLoan,
       viewLoan,
       editLoan,
+      getRepaymentMethodText,
       getLoanStatusText,
       logout,
       fetchLoans,
