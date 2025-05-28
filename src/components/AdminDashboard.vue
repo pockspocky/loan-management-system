@@ -16,6 +16,27 @@
 
     <!-- 主要内容区域 -->
     <div class="dashboard-content">
+      <!-- 自定义通知系统 -->
+      <div class="notification-container">
+        <div 
+          v-for="notification in notifications" 
+          :key="notification.id"
+          :class="['notification', `notification-${notification.type}`]"
+          @click="removeNotification(notification.id)"
+        >
+          <div class="notification-content">
+            <span class="notification-icon">
+              <span v-if="notification.type === 'success'">✅</span>
+              <span v-else-if="notification.type === 'error'">❌</span>
+              <span v-else-if="notification.type === 'warning'">⚠️</span>
+              <span v-else>ℹ️</span>
+            </span>
+            <span class="notification-message">{{ notification.message }}</span>
+          </div>
+          <button class="notification-close" @click.stop="removeNotification(notification.id)">×</button>
+        </div>
+      </div>
+      
       <!-- 加载状态 -->
       <div v-if="isLoading" class="loading-overlay">
         <div class="loading-spinner">加载中...</div>
@@ -343,6 +364,10 @@ export default {
     const isLoading = ref(false)
     const error = ref(null)
     
+    // 通知系统
+    const notifications = ref([])
+    let notificationId = 0
+    
     // 数据状态
     const loans = ref([])
     const users = ref([])
@@ -528,17 +553,17 @@ export default {
           resetLoanForm()
           showAddLoanModal.value = false
           
-          alert('贷款添加成功！')
+          showNotification('贷款添加成功！', 'success')
         } else {
           console.error('添加失败详情:', result)
           console.error('错误信息:', result.message)
           console.error('详细错误:', result.errors)
-          alert(`添加失败: ${result.message}\n详细信息: ${JSON.stringify(result.errors || {})}`)
+          showNotification(`添加失败: ${result.message}`, 'error')
         }
       } catch (err) {
         console.error('添加贷款完整错误:', err)
         console.error('错误响应:', err.response?.data)
-        alert(`添加贷款失败: ${err.message}\n详细信息: ${JSON.stringify(err.response?.data || {})}`)
+        showNotification('添加贷款失败，请稍后重试', 'error')
       } finally {
         isLoading.value = false
       }
@@ -557,12 +582,12 @@ export default {
         if (result.success) {
           // 重新获取贷款列表
           await fetchLoans()
-          alert('贷款审批成功！')
+          showNotification('贷款审批成功！', 'success')
         } else {
-          alert(`审批失败: ${result.message}`)
+          showNotification(`审批失败: ${result.message}`, 'error')
         }
       } catch (err) {
-        alert('审批失败，请稍后重试')
+        showNotification('审批失败，请稍后重试', 'error')
         console.error('审批贷款错误:', err)
       } finally {
         isLoading.value = false
@@ -582,12 +607,12 @@ export default {
         if (result.success) {
           // 重新获取贷款列表
           await fetchLoans()
-          alert('贷款删除成功！')
+          showNotification('贷款删除成功！', 'success')
         } else {
-          alert(`删除失败: ${result.message}`)
+          showNotification(`删除失败: ${result.message}`, 'error')
         }
       } catch (err) {
-        alert('删除失败，请稍后重试')
+        showNotification('删除失败，请稍后重试', 'error')
         console.error('删除贷款错误:', err)
       } finally {
         isLoading.value = false
@@ -638,12 +663,12 @@ export default {
           // 重新获取贷款列表
           await fetchLoans()
           showEditLoanModal.value = false
-          alert('贷款更新成功！')
+          showNotification('贷款更新成功！', 'success')
         } else {
-          alert(`更新失败: ${result.message}`)
+          showNotification(`更新失败: ${result.message}`, 'error')
         }
       } catch (err) {
-        alert('更新贷款失败，请稍后重试')
+        showNotification('更新贷款失败，请稍后重试', 'error')
         console.error('更新贷款错误:', err)
       } finally {
         isLoading.value = false
@@ -653,31 +678,31 @@ export default {
     // 验证贷款表单
     const validateLoanForm = () => {
       if (!newLoan.loanName.trim()) {
-        alert('请输入贷款名称')
+        showNotification('请输入贷款名称', 'warning')
         return false
       }
       if (!newLoan.applicantName.trim()) {
-        alert('请输入申请人姓名')
+        showNotification('请输入申请人姓名', 'warning')
         return false
       }
       if (newLoan.amount <= 0) {
-        alert('请输入有效的贷款金额')
+        showNotification('请输入有效的贷款金额', 'warning')
         return false
       }
       if (newLoan.interestRate <= 0) {
-        alert('请输入有效的年利率')
+        showNotification('请输入有效的年利率', 'warning')
         return false
       }
       if (!newLoan.bank.trim()) {
-        alert('请输入贷款银行')
+        showNotification('请输入贷款银行', 'warning')
         return false
       }
       if (newLoan.term <= 0) {
-        alert('请输入有效的还款期限')
+        showNotification('请输入有效的还款期限', 'warning')
         return false
       }
       if (!newLoan.repaymentMethod) {
-        alert('请选择还款方式')
+        showNotification('请选择还款方式', 'warning')
         return false
       }
       return true
@@ -699,31 +724,31 @@ export default {
     // 验证编辑贷款表单
     const validateEditLoanForm = () => {
       if (!editingLoan.loanName.trim()) {
-        alert('请输入贷款名称')
+        showNotification('请输入贷款名称', 'warning')
         return false
       }
       if (!editingLoan.applicantName.trim()) {
-        alert('请输入申请人姓名')
+        showNotification('请输入申请人姓名', 'warning')
         return false
       }
       if (editingLoan.amount <= 0) {
-        alert('请输入有效的贷款金额')
+        showNotification('请输入有效的贷款金额', 'warning')
         return false
       }
       if (editingLoan.interestRate <= 0) {
-        alert('请输入有效的年利率')
+        showNotification('请输入有效的年利率', 'warning')
         return false
       }
       if (!editingLoan.bank.trim()) {
-        alert('请输入贷款银行')
+        showNotification('请输入贷款银行', 'warning')
         return false
       }
       if (editingLoan.term <= 0) {
-        alert('请输入有效的还款期限')
+        showNotification('请输入有效的还款期限', 'warning')
         return false
       }
       if (!editingLoan.repaymentMethod) {
-        alert('请选择还款方式')
+        showNotification('请选择还款方式', 'warning')
         return false
       }
       return true
@@ -762,7 +787,7 @@ export default {
     onMounted(async () => {
       // 检查用户权限
       if (!authStore.isAdmin.value) {
-        alert('权限不足，请使用管理员账户登录')
+        showNotification('权限不足，请使用管理员账户登录', 'error', 5000)
         emit('go-to-login')
         return
       }
@@ -776,6 +801,31 @@ export default {
         fetchUsers()
       ])
     })
+    
+    // 显示通知
+    const showNotification = (message, type = 'info', duration = 3000) => {
+      const id = ++notificationId
+      const notification = {
+        id,
+        message,
+        type, // 'success', 'error', 'warning', 'info'
+        duration
+      }
+      notifications.value.push(notification)
+      
+      // 自动移除通知
+      setTimeout(() => {
+        removeNotification(id)
+      }, duration)
+    }
+    
+    // 移除通知
+    const removeNotification = (id) => {
+      const index = notifications.value.findIndex(n => n.id === id)
+      if (index > -1) {
+        notifications.value.splice(index, 1)
+      }
+    }
     
     return {
       // 响应式数据
@@ -808,7 +858,12 @@ export default {
       logout,
       fetchLoans,
       fetchUsers,
-      updateLoan
+      updateLoan,
+      
+      // 通知系统
+      notifications,
+      showNotification,
+      removeNotification
     }
   }
 }
@@ -1508,6 +1563,70 @@ export default {
   background: none;
   border: none;
   color: #c33;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 自定义通知系统样式 */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.notification {
+  background: white;
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.notification.notification-success {
+  border-left: 4px solid #4caf50;
+}
+
+.notification.notification-error {
+  border-left: 4px solid #f44336;
+}
+
+.notification.notification-warning {
+  border-left: 4px solid #ff9800;
+}
+
+.notification.notification-info {
+  border-left: 4px solid #2196f3;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-icon {
+  font-size: 18px;
+}
+
+.notification-message {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: #666;
   font-size: 18px;
   cursor: pointer;
   padding: 0;
