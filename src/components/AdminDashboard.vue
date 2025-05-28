@@ -336,6 +336,8 @@ export default {
     // 响应式数据
     const activeTab = ref('overview')
     const showAddLoanModal = ref(false)
+    const showViewLoanModal = ref(false)
+    const showEditLoanModal = ref(false)
     const isLoading = ref(false)
     const error = ref(null)
     
@@ -359,6 +361,20 @@ export default {
       bank: '',
       term: 0,
       repaymentMethod: ''
+    })
+    
+    // 选中的贷款和编辑表单
+    const selectedLoan = ref(null)
+    const editingLoan = reactive({
+      id: null,
+      loanName: '',
+      applicantName: '',
+      amount: 0,
+      interestRate: 0,
+      bank: '',
+      term: 0,
+      repaymentMethod: '',
+      status: 'pending'
     })
     
     // 菜单项
@@ -444,11 +460,21 @@ export default {
       isLoading.value = true
       
       try {
-        const result = await loanService.createLoan({
-          ...newLoan,
-          applicant_id: currentUser.value?.id || 1, // 临时使用当前用户ID
+        const loanData = {
+          loan_name: newLoan.loanName,
+          applicant_name: newLoan.applicantName,
+          amount: Number(newLoan.amount),
+          interest_rate: Number(newLoan.interestRate),
+          bank: newLoan.bank,
+          term: Number(newLoan.term),
+          repayment_method: newLoan.repaymentMethod,
+          applicant_id: currentUser.value?.id || 1,
           status: 'pending'
-        })
+        }
+        
+        console.log('发送贷款数据:', loanData)
+        
+        const result = await loanService.createLoan(loanData)
         
         if (result.success) {
           // 重新获取贷款列表
@@ -460,11 +486,12 @@ export default {
           
           alert('贷款添加成功！')
         } else {
+          console.error('添加失败详情:', result)
           alert(`添加失败: ${result.message}`)
         }
       } catch (err) {
+        console.error('添加贷款完整错误:', err)
         alert('添加贷款失败，请稍后重试')
-        console.error('添加贷款错误:', err)
       } finally {
         isLoading.value = false
       }
@@ -526,12 +553,58 @@ export default {
     
     // 查看贷款详情
     const viewLoan = (loan) => {
-      alert(`查看贷款详情功能待实现\n贷款ID: ${loan.id}\n贷款名称: ${loan.loanName}`)
+      selectedLoan.value = loan
+      showViewLoanModal.value = true
     }
     
     // 编辑贷款
     const editLoan = (loan) => {
-      alert(`编辑贷款功能待实现\n贷款ID: ${loan.id}\n贷款名称: ${loan.loanName}`)
+      Object.assign(editingLoan, {
+        id: loan.id,
+        loanName: loan.loanName,
+        applicantName: loan.applicantName,
+        amount: loan.amount,
+        interestRate: loan.interestRate,
+        bank: loan.bank,
+        term: loan.term,
+        repaymentMethod: loan.repaymentMethod,
+        status: loan.status
+      })
+      showEditLoanModal.value = true
+    }
+    
+    // 更新贷款
+    const updateLoan = async () => {
+      if (!validateEditLoanForm()) return
+      
+      isLoading.value = true
+      
+      try {
+        const result = await loanService.updateLoan(editingLoan.id, {
+          loanName: editingLoan.loanName,
+          applicantName: editingLoan.applicantName,
+          amount: editingLoan.amount,
+          interestRate: editingLoan.interestRate,
+          bank: editingLoan.bank,
+          term: editingLoan.term,
+          repaymentMethod: editingLoan.repaymentMethod,
+          status: editingLoan.status
+        })
+        
+        if (result.success) {
+          // 重新获取贷款列表
+          await fetchLoans()
+          showEditLoanModal.value = false
+          alert('贷款更新成功！')
+        } else {
+          alert(`更新失败: ${result.message}`)
+        }
+      } catch (err) {
+        alert('更新贷款失败，请稍后重试')
+        console.error('更新贷款错误:', err)
+      } finally {
+        isLoading.value = false
+      }
     }
     
     // 验证贷款表单
@@ -580,6 +653,39 @@ export default {
       })
     }
     
+    // 验证编辑贷款表单
+    const validateEditLoanForm = () => {
+      if (!editingLoan.loanName.trim()) {
+        alert('请输入贷款名称')
+        return false
+      }
+      if (!editingLoan.applicantName.trim()) {
+        alert('请输入申请人姓名')
+        return false
+      }
+      if (editingLoan.amount <= 0) {
+        alert('请输入有效的贷款金额')
+        return false
+      }
+      if (editingLoan.interestRate <= 0) {
+        alert('请输入有效的年利率')
+        return false
+      }
+      if (!editingLoan.bank.trim()) {
+        alert('请输入贷款银行')
+        return false
+      }
+      if (editingLoan.term <= 0) {
+        alert('请输入有效的还款期限')
+        return false
+      }
+      if (!editingLoan.repaymentMethod) {
+        alert('请选择还款方式')
+        return false
+      }
+      return true
+    }
+    
     // 获取贷款状态文本
     const getLoanStatusText = (status) => {
       const statusMap = {
@@ -621,6 +727,8 @@ export default {
       // 响应式数据
       activeTab,
       showAddLoanModal,
+      showViewLoanModal,
+      showEditLoanModal,
       isLoading,
       error,
       loans,
@@ -628,6 +736,8 @@ export default {
       logs,
       statistics,
       newLoan,
+      selectedLoan,
+      editingLoan,
       menuItems,
       
       // 计算属性
@@ -642,7 +752,8 @@ export default {
       getLoanStatusText,
       logout,
       fetchLoans,
-      fetchUsers
+      fetchUsers,
+      updateLoan
     }
   }
 }
