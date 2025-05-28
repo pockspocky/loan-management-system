@@ -1,6 +1,6 @@
 // API配置
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'https://zlyoszudwbcc.sealoshzh.site:8080/api/v1',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://10.108.56.221:8080/api/v1',
   TIMEOUT: 30000
 };
 
