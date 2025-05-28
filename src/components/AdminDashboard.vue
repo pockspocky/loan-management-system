@@ -471,6 +471,7 @@ export default {
               applicantId: loan.applicant_id?._id || loan.applicant_id
             }))
             console.log('使用 result.data.items 数组并转换格式:', loans.value)
+            console.log('原始数据示例:', result.data.items[0])
           } else {
             console.warn('未预期的数据结构:', result.data)
             loans.value = []
