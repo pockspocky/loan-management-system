@@ -52,47 +52,49 @@
           </div>
           
           <div v-if="loans.length > 0" class="loans-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>贷款名称</th>
-                  <th>申请人</th>
-                  <th>贷款金额</th>
-                  <th>年利率</th>
-                  <th>贷款银行</th>
-                  <th>还款期限</th>
-                  <th>还款方式</th>
-                  <th>申请状态</th>
-                  <th>申请时间</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="loan in loans" :key="loan.id">
-                  <td>{{ loan.id }}</td>
-                  <td class="loan-name">{{ loan.loanName }}</td>
-                  <td>{{ loan.applicantName }}</td>
-                  <td class="amount">￥{{ loan.amount.toLocaleString() }}</td>
-                  <td class="rate">{{ loan.interestRate }}%</td>
-                  <td>{{ loan.bank }}</td>
-                  <td class="term">{{ loan.term }}个月</td>
-                  <td class="repayment-method">{{ loan.repaymentMethod }}</td>
-                  <td>
-                    <span :class="['loan-status', loan.status]">
-                      {{ getLoanStatusText(loan.status) }}
-                    </span>
-                  </td>
-                  <td>{{ loan.applicationDate }}</td>
-                  <td>
-                    <button @click="viewLoan(loan)" class="action-btn view">查看</button>
-                    <button @click="approveLoan(loan)" class="action-btn approve" v-if="loan.status === 'pending'">审批</button>
-                    <button @click="editLoan(loan)" class="action-btn edit">编辑</button>
-                    <button @click="deleteLoan(loan)" class="action-btn delete">删除</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="id-col">ID</th>
+                    <th class="name-col">贷款名称</th>
+                    <th class="applicant-col">申请人</th>
+                    <th class="amount-col">贷款金额</th>
+                    <th class="rate-col">年利率</th>
+                    <th class="bank-col">贷款银行</th>
+                    <th class="term-col">还款期限</th>
+                    <th class="method-col">还款方式</th>
+                    <th class="status-col">申请状态</th>
+                    <th class="date-col">申请时间</th>
+                    <th class="action-col">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="loan in loans" :key="loan.id">
+                    <td class="id-col">{{ loan.id }}</td>
+                    <td class="name-col loan-name">{{ loan.loanName }}</td>
+                    <td class="applicant-col">{{ loan.applicantName }}</td>
+                    <td class="amount-col amount">￥{{ loan.amount.toLocaleString() }}</td>
+                    <td class="rate-col rate">{{ loan.interestRate }}%</td>
+                    <td class="bank-col">{{ loan.bank }}</td>
+                    <td class="term-col term">{{ loan.term }}个月</td>
+                    <td class="method-col repayment-method">{{ loan.repaymentMethod }}</td>
+                    <td class="status-col">
+                      <span :class="['loan-status', loan.status]">
+                        {{ getLoanStatusText(loan.status) }}
+                      </span>
+                    </td>
+                    <td class="date-col">{{ loan.applicationDate }}</td>
+                    <td class="action-col">
+                      <button @click="viewLoan(loan)" class="action-btn view">查看</button>
+                      <button @click="approveLoan(loan)" class="action-btn approve" v-if="loan.status === 'pending'">审批</button>
+                      <button @click="editLoan(loan)" class="action-btn edit">编辑</button>
+                      <button @click="deleteLoan(loan)" class="action-btn delete">删除</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
           
           <div v-else class="empty-loans-state">
@@ -942,14 +944,42 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+.table-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
 .loans-table table {
   width: 100%;
+  min-width: 1200px; /* 设置表格最小宽度 */
   border-collapse: collapse;
+  white-space: nowrap; /* 防止文字换行 */
 }
 
 .loans-table th,
 .loans-table td {
-  padding: 15px;
+  padding: 15px 12px;
   text-align: left;
   border-bottom: 1px solid #e1e8ed;
 }
@@ -958,10 +988,73 @@ export default {
   background: #f8f9fa;
   font-weight: 600;
   color: #333;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.amount {
+/* 各列的具体宽度设置 */
+.id-col {
+  width: 160px;
+  min-width: 160px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.name-col {
+  width: 120px;
+  min-width: 120px;
+}
+
+.applicant-col {
+  width: 100px;
+  min-width: 100px;
+}
+
+.amount-col {
+  width: 120px;
+  min-width: 120px;
   text-align: right;
+}
+
+.rate-col {
+  width: 80px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.bank-col {
+  width: 100px;
+  min-width: 100px;
+}
+
+.term-col {
+  width: 90px;
+  min-width: 90px;
+  text-align: center;
+}
+
+.method-col {
+  width: 130px;
+  min-width: 130px;
+  text-align: center;
+}
+
+.status-col {
+  width: 100px;
+  min-width: 100px;
+  text-align: center;
+}
+
+.date-col {
+  width: 110px;
+  min-width: 110px;
+}
+
+.action-col {
+  width: 200px;
+  min-width: 200px;
+  text-align: center;
 }
 
 .loan-name {
@@ -969,19 +1062,21 @@ export default {
   color: #333;
 }
 
+.amount {
+  font-weight: 600;
+  color: #2d3748;
+}
+
 .rate {
-  text-align: center;
   font-weight: 600;
   color: #ff9800;
 }
 
 .term {
-  text-align: center;
   color: #666;
 }
 
 .repayment-method {
-  text-align: center;
   color: #666;
 }
 
