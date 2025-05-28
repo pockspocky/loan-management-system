@@ -457,22 +457,29 @@ export default {
     const addLoan = async () => {
       if (!validateLoanForm()) return
       
+      // 检查认证状态
+      const token = localStorage.getItem('token')
+      const user = localStorage.getItem('user')
+      console.log('Token状态:', token ? `存在 (长度: ${token.length})` : '不存在')
+      console.log('用户状态:', user ? `存在: ${user}` : '不存在')
+      
       isLoading.value = true
       
       try {
         const loanData = {
-          loan_name: newLoan.loanName,
-          applicant_name: newLoan.applicantName,
+          loanName: newLoan.loanName,
+          applicantName: newLoan.applicantName,
           amount: Number(newLoan.amount),
-          interest_rate: Number(newLoan.interestRate),
+          interestRate: Number(newLoan.interestRate),
           bank: newLoan.bank,
           term: Number(newLoan.term),
-          repayment_method: newLoan.repaymentMethod,
-          applicant_id: currentUser.value?.id || 1,
+          repaymentMethod: newLoan.repaymentMethod,
+          applicantId: currentUser.value?.id || 1,
           status: 'pending'
         }
         
         console.log('发送贷款数据:', loanData)
+        console.log('当前用户:', currentUser.value)
         
         const result = await loanService.createLoan(loanData)
         
@@ -487,11 +494,14 @@ export default {
           alert('贷款添加成功！')
         } else {
           console.error('添加失败详情:', result)
-          alert(`添加失败: ${result.message}`)
+          console.error('错误信息:', result.message)
+          console.error('详细错误:', result.errors)
+          alert(`添加失败: ${result.message}\n详细信息: ${JSON.stringify(result.errors || {})}`)
         }
       } catch (err) {
         console.error('添加贷款完整错误:', err)
-        alert('添加贷款失败，请稍后重试')
+        console.error('错误响应:', err.response?.data)
+        alert(`添加贷款失败: ${err.message}\n详细信息: ${JSON.stringify(err.response?.data || {})}`)
       } finally {
         isLoading.value = false
       }
@@ -505,11 +515,7 @@ export default {
       isLoading.value = true
       
       try {
-        const result = await loanService.approveLoan(loan.id, {
-          status: 'approved',
-          approved_by: currentUser.value?.id,
-          approved_at: new Date().toISOString()
-        })
+        const result = await loanService.approveLoan(loan.id)
         
         if (result.success) {
           // 重新获取贷款列表
@@ -714,6 +720,9 @@ export default {
         emit('go-to-login')
         return
       }
+      
+      console.log('管理员用户信息:', authStore.state.user)
+      console.log('认证状态:', authStore.state.isAuthenticated)
       
       // 获取初始数据
       await Promise.all([
