@@ -466,6 +466,12 @@ export default {
       isLoading.value = true
       
       try {
+        // 还款方式映射：中文转英文
+        const repaymentMethodMap = {
+          '等额本息': 'equal_payment',
+          '等额本金': 'equal_principal'
+        }
+        
         const loanData = {
           loan_name: newLoan.loanName,
           applicant_name: newLoan.applicantName,
@@ -473,12 +479,13 @@ export default {
           interest_rate: Number(newLoan.interestRate),
           bank: newLoan.bank,
           term: Number(newLoan.term),
-          repayment_method: newLoan.repaymentMethod,
+          repayment_method: repaymentMethodMap[newLoan.repaymentMethod] || newLoan.repaymentMethod,
           applicant_id: currentUser.value?.id || currentUser.value?._id || 1,
           status: 'pending'
         }
         
         console.log('发送贷款数据（下划线格式）:', loanData)
+        console.log('还款方式映射:', newLoan.repaymentMethod, '->', loanData.repayment_method)
         console.log('当前用户:', currentUser.value)
         
         const result = await loanService.createLoan(loanData)
@@ -724,11 +731,10 @@ export default {
       console.log('管理员用户信息:', authStore.state.user)
       console.log('认证状态:', authStore.state.isAuthenticated)
       
-      // 获取初始数据
+      // 获取初始数据（暂时不获取统计信息）
       await Promise.all([
         fetchLoans(),
-        fetchUsers(),
-        fetchStatistics()
+        fetchUsers()
       ])
     })
     
