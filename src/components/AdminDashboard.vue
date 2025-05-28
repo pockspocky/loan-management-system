@@ -395,8 +395,26 @@ export default {
       try {
         const result = await loanService.getLoans()
         
+        console.log('获取贷款列表完整响应:', result)
+        console.log('响应成功状态:', result.success)
+        console.log('响应数据:', result.data)
+        
         if (result.success) {
-          loans.value = result.data.loans || []
+          // 检查数据结构
+          if (result.data && Array.isArray(result.data)) {
+            loans.value = result.data
+            console.log('直接使用 result.data 数组:', result.data)
+          } else if (result.data && result.data.loans && Array.isArray(result.data.loans)) {
+            loans.value = result.data.loans
+            console.log('使用 result.data.loans 数组:', result.data.loans)
+          } else {
+            console.warn('未预期的数据结构:', result.data)
+            loans.value = []
+          }
+          
+          console.log('最终设置的贷款列表:', loans.value)
+          console.log('贷款数量:', loans.value.length)
+          
           // 更新统计信息
           updateStatistics()
         } else {
