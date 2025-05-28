@@ -207,11 +207,11 @@
           </div>
           <div class="form-group">
             <label>贷款金额</label>
-            <input v-model.number="newLoan.amount" type="number" required />
+            <input v-model.number="newLoan.amount" type="number" min="1000" max="10000000" step="100" required />
           </div>
           <div class="form-group">
             <label>年利率(%)</label>
-            <input v-model.number="newLoan.interestRate" type="number" step="0.01" required />
+            <input v-model.number="newLoan.interestRate" type="number" min="0.01" max="36" step="0.01" required />
           </div>
           <div class="form-group">
             <label>贷款银行</label>
@@ -219,7 +219,7 @@
           </div>
           <div class="form-group">
             <label>还款期限(月)</label>
-            <input v-model.number="newLoan.term" type="number" required />
+            <input v-model.number="newLoan.term" type="number" min="1" max="360" step="1" required />
           </div>
           <div class="form-group">
             <label>还款方式</label>
@@ -306,11 +306,11 @@
           </div>
           <div class="form-group">
             <label>贷款金额</label>
-            <input v-model.number="editingLoan.amount" type="number" required />
+            <input v-model.number="editingLoan.amount" type="number" min="1000" max="10000000" step="100" required />
           </div>
           <div class="form-group">
             <label>年利率(%)</label>
-            <input v-model.number="editingLoan.interestRate" type="number" step="0.01" required />
+            <input v-model.number="editingLoan.interestRate" type="number" min="0.01" max="36" step="0.01" required />
           </div>
           <div class="form-group">
             <label>贷款银行</label>
@@ -318,7 +318,7 @@
           </div>
           <div class="form-group">
             <label>还款期限(月)</label>
-            <input v-model.number="editingLoan.term" type="number" required />
+            <input v-model.number="editingLoan.term" type="number" min="1" max="360" step="1" required />
           </div>
           <div class="form-group">
             <label>还款方式</label>
@@ -557,10 +557,10 @@ export default {
         const loanData = {
           loan_name: newLoan.loanName,
           applicant_name: newLoan.applicantName,
-          amount: Number(newLoan.amount),
-          interest_rate: Number(newLoan.interestRate),
+          amount: parseFloat(newLoan.amount),
+          interest_rate: parseFloat(newLoan.interestRate),
           bank: newLoan.bank,
-          term: Number(newLoan.term),
+          term: parseInt(newLoan.term),
           repayment_method: repaymentMethodMap[newLoan.repaymentMethod] || newLoan.repaymentMethod,
           applicant_id: currentUser.value?.id || currentUser.value?._id || 1,
           status: 'pending'
@@ -718,20 +718,23 @@ export default {
         showNotification('请输入申请人姓名', 'warning')
         return false
       }
-      if (newLoan.amount <= 0) {
-        showNotification('请输入有效的贷款金额', 'warning')
+      const amount = parseFloat(newLoan.amount)
+      if (isNaN(amount) || amount <= 0 || amount < 1000) {
+        showNotification('请输入有效的贷款金额（最少1000元）', 'warning')
         return false
       }
-      if (newLoan.interestRate <= 0) {
-        showNotification('请输入有效的年利率', 'warning')
+      const interestRate = parseFloat(newLoan.interestRate)
+      if (isNaN(interestRate) || interestRate <= 0 || interestRate > 36) {
+        showNotification('请输入有效的年利率（0-36%）', 'warning')
         return false
       }
       if (!newLoan.bank.trim()) {
         showNotification('请输入贷款银行', 'warning')
         return false
       }
-      if (newLoan.term <= 0) {
-        showNotification('请输入有效的还款期限', 'warning')
+      const term = parseInt(newLoan.term)
+      if (isNaN(term) || term <= 0 || term > 360) {
+        showNotification('请输入有效的还款期限（1-360个月）', 'warning')
         return false
       }
       if (!newLoan.repaymentMethod) {
@@ -764,20 +767,23 @@ export default {
         showNotification('请输入申请人姓名', 'warning')
         return false
       }
-      if (editingLoan.amount <= 0) {
-        showNotification('请输入有效的贷款金额', 'warning')
+      const amount = parseFloat(editingLoan.amount)
+      if (isNaN(amount) || amount <= 0 || amount < 1000) {
+        showNotification('请输入有效的贷款金额（最少1000元）', 'warning')
         return false
       }
-      if (editingLoan.interestRate <= 0) {
-        showNotification('请输入有效的年利率', 'warning')
+      const interestRate = parseFloat(editingLoan.interestRate)
+      if (isNaN(interestRate) || interestRate <= 0 || interestRate > 36) {
+        showNotification('请输入有效的年利率（0-36%）', 'warning')
         return false
       }
       if (!editingLoan.bank.trim()) {
         showNotification('请输入贷款银行', 'warning')
         return false
       }
-      if (editingLoan.term <= 0) {
-        showNotification('请输入有效的还款期限', 'warning')
+      const term = parseInt(editingLoan.term)
+      if (isNaN(term) || term <= 0 || term > 360) {
+        showNotification('请输入有效的还款期限（1-360个月）', 'warning')
         return false
       }
       if (!editingLoan.repaymentMethod) {
