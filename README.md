@@ -43,7 +43,7 @@ npm run preview
 创建 `.env` 文件配置后端API地址：
 
 ```env
-VITE_API_URL=http://10.108.56.221:8080/api/v1
+VITE_API_URL=https://zlyoszudwbcc.sealoshzh.site/api/v1
 ```
 
 ## 项目结构

@@ -325,8 +325,37 @@
 
     <!-- 查看贷款详情模态框 -->
     <div v-if="showViewLoanModal" class="modal-overlay" @click="showViewLoanModal = false">
-      <div class="modal-content" @click.stop>
+      <div class="modal-content loan-detail-modal" @click.stop>
+        <div class="modal-header">
         <h3>贷款详情</h3>
+          <button @click="showViewLoanModal = false" class="close-btn">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <!-- 导航标签 -->
+          <div class="detail-tabs">
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'basic' }]"
+              @click="activeDetailTab = 'basic'"
+            >
+              基本信息
+            </button>
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'calculator' }]"
+              @click="activeDetailTab = 'calculator'"
+            >
+              贷款计算
+            </button>
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'repayment' }]"
+              @click="activeDetailTab = 'repayment'"
+            >
+              还款计划
+            </button>
+          </div>
+
+          <!-- 基本信息标签页 -->
+          <div v-if="activeDetailTab === 'basic'" class="tab-content">
         <div class="detail-grid">
           <div class="detail-item">
             <label>贷款名称</label>
@@ -367,8 +396,225 @@
             <span>{{ selectedLoan.applicationDate }}</span>
           </div>
         </div>
-        <div class="modal-actions">
-          <button @click="showViewLoanModal = false" class="confirm-btn">关闭</button>
+        </div>
+
+          <!-- 贷款计算标签页 -->
+          <div v-if="activeDetailTab === 'calculator'" class="tab-content">
+            <div class="calculator-section">
+              <div class="calculator-controls">
+                <button 
+                  @click="calculateLoan('equal-installment')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  等额本息计算
+                </button>
+                <button 
+                  @click="calculateLoan('equal-principal')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  等额本金计算
+                </button>
+                <button 
+                  @click="calculateLoan('compare')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  两种方式比较
+                </button>
+              </div>
+
+              <div v-if="isCalculating" class="loading">
+                <div class="spinner"></div>
+                <span>计算中...</span>
+              </div>
+
+              <!-- 计算结果显示 -->
+              <div v-if="calculationResult" class="calculation-result">
+                <!-- 等额本息结果 -->
+                <div v-if="calculationResult.type === 'equalInstallment'" class="result-section">
+                  <h4>等额本息还款计算结果</h4>
+                  <div class="result-summary">
+                    <div class="summary-item">
+                      <label>每月还款额</label>
+                      <span class="highlight">￥{{ calculationResult.monthlyPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总还款额</label>
+                      <span>￥{{ calculationResult.totalPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总利息</label>
+                      <span>￥{{ calculationResult.totalInterest?.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 等额本金结果 -->
+                <div v-if="calculationResult.type === 'equalPrincipal'" class="result-section">
+                  <h4>等额本金还款计算结果</h4>
+                  <div class="result-summary">
+                    <div class="summary-item">
+                      <label>首月还款额</label>
+                      <span class="highlight">￥{{ calculationResult.firstMonthPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>末月还款额</label>
+                      <span>￥{{ calculationResult.lastMonthPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总还款额</label>
+                      <span>￥{{ calculationResult.totalPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总利息</label>
+                      <span>￥{{ calculationResult.totalInterest?.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 比较结果 -->
+                <div v-if="calculationResult.equalInstallment && calculationResult.equalPrincipal" class="result-section">
+                  <h4>还款方式比较</h4>
+                  <div class="comparison-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>还款方式</th>
+                          <th>月供</th>
+                          <th>总还款额</th>
+                          <th>总利息</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>等额本息</td>
+                          <td>￥{{ calculationResult.equalInstallment.monthlyPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalInstallment.totalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalInstallment.totalInterest?.toLocaleString() }}</td>
+                        </tr>
+                        <tr>
+                          <td>等额本金</td>
+                          <td>￥{{ calculationResult.equalPrincipal.firstMonthPayment?.toLocaleString() }}~￥{{ calculationResult.equalPrincipal.lastMonthPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalPrincipal.totalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalPrincipal.totalInterest?.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div v-if="calculationResult.comparison" class="comparison-recommendation">
+                    <p class="recommendation">{{ calculationResult.comparison.recommendation }}</p>
+                  </div>
+                </div>
+
+                <!-- 详细还款计划表格 -->
+                <div v-if="calculationResult.schedule && calculationResult.schedule.length > 0" class="schedule-section">
+                  <h4>还款计划明细（前12期）</h4>
+                  <div class="schedule-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>期数</th>
+                          <th>月供总额</th>
+                          <th>本金</th>
+                          <th>利息</th>
+                          <th>剩余本金</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(item, index) in calculationResult.schedule.slice(0, 12)" :key="index">
+                          <td>第{{ item.period }}期</td>
+                          <td>￥{{ item.monthlyPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.principalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.interestPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.remainingPrincipal?.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 还款计划标签页 -->
+          <div v-if="activeDetailTab === 'repayment'" class="tab-content">
+            <div class="repayment-section">
+              <div class="repayment-controls">
+                <button @click="loadRepaymentSchedule" class="calc-btn" :disabled="isLoadingRepayment">
+                  {{ isLoadingRepayment ? '加载中...' : '获取还款计划' }}
+                </button>
+              </div>
+
+              <!-- 还款统计 -->
+              <div v-if="repaymentStats" class="repayment-stats">
+                <h4>还款统计</h4>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <label>总期数</label>
+                    <span>{{ repaymentStats.total_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>已还期数</label>
+                    <span>{{ repaymentStats.paid_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>待还期数</label>
+                    <span>{{ repaymentStats.pending_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>还款进度</label>
+                    <span>{{ repaymentStats.payment_progress }}%</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>总应还金额</label>
+                    <span>￥{{ repaymentStats.total_amount?.toLocaleString() }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>已还金额</label>
+                    <span>￥{{ repaymentStats.paid_amount?.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: repaymentStats.payment_progress + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- 还款计划列表 -->
+              <div v-if="repaymentSchedule && repaymentSchedule.length > 0" class="repayment-schedule">
+                <h4>还款计划（前20期）</h4>
+                <div class="schedule-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>期数</th>
+                        <th>到期日期</th>
+                        <th>应还总额</th>
+                        <th>本金</th>
+                        <th>利息</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in repaymentSchedule.slice(0, 20)" :key="item.period_number">
+                        <td>第{{ item.period_number }}期</td>
+                        <td>{{ formatDate(item.due_date) }}</td>
+                        <td>￥{{ item.total_amount?.toLocaleString() }}</td>
+                        <td>￥{{ item.principal_amount?.toLocaleString() }}</td>
+                        <td>￥{{ item.interest_amount?.toLocaleString() }}</td>
+                        <td>
+                          <span :class="['payment-status', item.status]">
+                            {{ getPaymentStatusText(item.status) }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -422,6 +668,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { loanCalculatorService, repaymentService } from '../services/index.js'
 
 export default {
   name: 'UserDashboard',
@@ -434,6 +681,16 @@ export default {
     const showAddLoanModal = ref(false)
     const showViewLoanModal = ref(false)
     const showEditLoanModal = ref(false)
+    const activeDetailTab = ref('basic')
+    
+    // 计算相关状态
+    const isCalculating = ref(false)
+    const calculationResult = ref(null)
+    
+    // 还款计划相关状态
+    const isLoadingRepayment = ref(false)
+    const repaymentSchedule = ref([])
+    const repaymentStats = ref(null)
     
     const menuItems = [
       { id: 'overview', text: '概览', icon: '🏠' },
@@ -554,6 +811,11 @@ export default {
     const viewLoan = (loan) => {
       selectedLoan.value = loan
       showViewLoanModal.value = true
+      activeDetailTab.value = 'basic'
+      // 重置计算结果
+      calculationResult.value = null
+      repaymentSchedule.value = []
+      repaymentStats.value = null
     }
     
     const editLoan = (loan) => {
@@ -572,6 +834,110 @@ export default {
         }
       }
       showEditLoanModal.value = false
+    }
+    
+    // 贷款计算功能
+    const calculateLoan = async (type) => {
+      if (!selectedLoan.value) return
+      
+      isCalculating.value = true
+      
+      try {
+        const principal = Number(selectedLoan.value.amount)
+        const annualRate = Number(selectedLoan.value.interestRate) / 100
+        const months = Number(selectedLoan.value.term)
+        
+        if (type === 'equal-installment') {
+          try {
+            const result = await loanCalculatorService.calculateEqualInstallment(principal, annualRate, months)
+            calculationResult.value = result
+          } catch (error) {
+            console.warn('API计算失败，使用本地计算:', error)
+            calculationResult.value = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+          }
+        } else if (type === 'equal-principal') {
+          try {
+            const result = await loanCalculatorService.calculateEqualPrincipal(principal, annualRate, months)
+            calculationResult.value = result
+          } catch (error) {
+            console.warn('API计算失败，使用本地计算:', error)
+            calculationResult.value = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+          }
+        } else if (type === 'compare') {
+          try {
+            const result = await loanCalculatorService.compareRepaymentMethods(principal, annualRate, months)
+            calculationResult.value = result
+          } catch (error) {
+            console.warn('API比较失败，使用本地计算:', error)
+            const equalInstallment = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+            const equalPrincipal = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+            
+            calculationResult.value = {
+              equalInstallment,
+              equalPrincipal,
+              comparison: {
+                interestDifference: equalInstallment.totalInterest - equalPrincipal.totalInterest,
+                paymentDifference: equalInstallment.totalPayment - equalPrincipal.totalPayment,
+                recommendation: `等额本金比等额本息少支付利息 ${(equalInstallment.totalInterest - equalPrincipal.totalInterest).toLocaleString()} 元`
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('贷款计算失败:', error)
+        alert('计算失败，请稍后重试')
+      } finally {
+        isCalculating.value = false
+      }
+    }
+    
+    // 加载还款计划
+    const loadRepaymentSchedule = async () => {
+      if (!selectedLoan.value || !selectedLoan.value.id) {
+        // 如果没有ID，使用本地生成的还款计划
+        generateLocalRepaymentSchedule()
+        return
+      }
+      
+      isLoadingRepayment.value = true
+      
+      try {
+        // 尝试从API获取还款计划
+        const scheduleResult = await repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 50)
+        const statsResult = await repaymentService.getPaymentStats(selectedLoan.value.id)
+        
+        repaymentSchedule.value = scheduleResult.items || []
+        repaymentStats.value = scheduleResult.payment_stats || statsResult
+      } catch (error) {
+        console.warn('API获取还款计划失败，使用本地生成:', error)
+        generateLocalRepaymentSchedule()
+      } finally {
+        isLoadingRepayment.value = false
+      }
+    }
+    
+    // 生成本地还款计划
+    const generateLocalRepaymentSchedule = () => {
+      if (!selectedLoan.value) return
+      
+      try {
+        const schedule = repaymentService.generateLocalRepaymentSchedule(selectedLoan.value)
+        repaymentSchedule.value = schedule
+        repaymentStats.value = repaymentService.calculatePaymentStats(schedule)
+      } catch (error) {
+        console.error('生成本地还款计划失败:', error)
+        alert('生成还款计划失败，请检查贷款信息')
+      }
+    }
+    
+    // 格式化日期
+    const formatDate = (dateString) => {
+      return repaymentService.formatDate(dateString)
+    }
+    
+    // 获取还款状态文本
+    const getPaymentStatusText = (status) => {
+      return repaymentService.getPaymentStatusText(status)
     }
     
     const logout = () => {
@@ -595,6 +961,12 @@ export default {
       newLoan,
       editingLoan,
       selectedLoan,
+      activeDetailTab,
+      isCalculating,
+      calculationResult,
+      isLoadingRepayment,
+      repaymentSchedule,
+      repaymentStats,
       filteredTasks,
       toggleTaskStatus,
       addTask,
@@ -602,6 +974,10 @@ export default {
       viewLoan,
       editLoan,
       updateLoan,
+      calculateLoan,
+      loadRepaymentSchedule,
+      formatDate,
+      getPaymentStatusText,
       getLoanStatusText,
       logout
     }
@@ -1430,5 +1806,354 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 新增样式：贷款详情弹窗 */
+.loan-detail-modal {
+  max-width: 900px;
+  max-height: 90vh;
+  padding: 0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #7f8c8d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #f8f9fa;
+  color: #e74c3c;
+}
+
+.modal-body {
+  padding: 20px 30px 30px;
+}
+
+/* 标签页样式 */
+.detail-tabs {
+  display: flex;
+  border-bottom: 2px solid #e1e8ed;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #7f8c8d;
+  transition: all 0.3s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  color: #4ecdc4;
+}
+
+.tab-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+}
+
+.tab-content {
+  min-height: 300px;
+}
+
+/* 计算器样式 */
+.calculator-section {
+  padding: 20px 0;
+}
+
+.calculator-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.calc-btn {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.calc-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.calc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  color: #7f8c8d;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e1e8ed;
+  border-top: 2px solid #4ecdc4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 计算结果样式 */
+.calculation-result {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.result-section {
+  margin-bottom: 30px;
+}
+
+.result-section h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #4ecdc4;
+}
+
+.summary-item label {
+  display: block;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.summary-item span {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.summary-item .highlight {
+  color: #e74c3c;
+  font-size: 20px;
+}
+
+/* 比较表格样式 */
+.comparison-table {
+  overflow-x: auto;
+  margin: 15px 0;
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.comparison-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.comparison-recommendation {
+  background: #e8f5f4;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.recommendation {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* 详细计划表格样式 */
+.schedule-section {
+  margin-top: 20px;
+}
+
+.schedule-table {
+  overflow-x: auto;
+  margin-top: 15px;
+}
+
+.schedule-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 10px 8px;
+  text-align: right;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.schedule-table th:first-child,
+.schedule-table td:first-child {
+  text-align: left;
+}
+
+.schedule-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* 还款计划样式 */
+.repayment-section {
+  padding: 20px 0;
+}
+
+.repayment-controls {
+  margin-bottom: 20px;
+}
+
+.repayment-stats {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.repayment-stats h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-item label {
+  display: block;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.stat-item span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e1e8ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  transition: width 0.3s ease;
+}
+
+.payment-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.payment-status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.payment-status.paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.payment-status.overdue {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.payment-status.partial {
+  background: #d1ecf1;
+  color: #0c5460;
 }
 </style> 

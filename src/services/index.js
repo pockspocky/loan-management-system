@@ -156,6 +156,10 @@ export const userService = {
   }
 };
 
+// 导入新的服务
+export { loanCalculatorService } from './loanCalculatorService.js';
+export { repaymentService } from './repaymentService.js';
+
 // 贷款服务
 export const loanService = {
   async getLoans() {
@@ -203,18 +207,18 @@ export const loanService = {
     }
   },
 
-  async approveLoan(loanId) {
+  async approveLoan(loanId, approvalData = {}) {
     try {
-      const response = await apiClient.post(`/loans/${loanId}/approve`);
+      const response = await apiClient.patch(`/loans/${loanId}/approve`, approvalData);
       return response.data;
     } catch (error) {
       return handleApiError(error);
     }
   },
 
-  async rejectLoan(loanId, reason) {
+  async rejectLoan(loanId, rejectionData) {
     try {
-      const response = await apiClient.post(`/loans/${loanId}/reject`, { reason });
+      const response = await apiClient.patch(`/loans/${loanId}/reject`, rejectionData);
       return response.data;
     } catch (error) {
       return handleApiError(error);

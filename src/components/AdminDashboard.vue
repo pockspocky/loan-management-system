@@ -239,54 +239,539 @@
 
     <!-- 查看贷款详情模态框 -->
     <div v-if="showViewLoanModal" class="modal-overlay" @click="showViewLoanModal = false">
-      <div class="modal-content" @click.stop>
-        <h3>贷款详情</h3>
-        <div class="loan-details" v-if="selectedLoan">
+      <div class="modal-content loan-detail-modal" @click.stop>
+        <div class="modal-header">
+          <h3>贷款详情管理</h3>
+          <button @click="showViewLoanModal = false" class="close-btn">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <!-- 导航标签 -->
+          <div class="detail-tabs">
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'basic' }]"
+              @click="activeDetailTab = 'basic'"
+            >
+              基本信息
+            </button>
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'calculator' }]"
+              @click="activeDetailTab = 'calculator'"
+            >
+              贷款计算
+            </button>
+            <button 
+              :class="['tab-btn', { active: activeDetailTab === 'repayment' }]"
+              @click="activeDetailTab = 'repayment'"
+            >
+              还款管理
+            </button>
+          </div>
+
+          <!-- 基本信息标签页 -->
+          <div v-if="activeDetailTab === 'basic'" class="tab-content">
+            <div class="detail-grid">
           <div class="detail-item">
-            <label>贷款ID:</label>
+                <label>贷款ID</label>
             <span>{{ selectedLoan.id }}</span>
           </div>
           <div class="detail-item">
-            <label>贷款名称:</label>
+                <label>贷款名称</label>
             <span>{{ selectedLoan.loanName }}</span>
           </div>
           <div class="detail-item">
-            <label>申请人:</label>
+                <label>申请人</label>
             <span>{{ selectedLoan.applicantName }}</span>
           </div>
           <div class="detail-item">
-            <label>贷款金额:</label>
+                <label>贷款金额</label>
             <span>￥{{ selectedLoan.amount?.toLocaleString() }}</span>
           </div>
           <div class="detail-item">
-            <label>年利率:</label>
+                <label>年利率</label>
             <span>{{ selectedLoan.interestRate }}%</span>
           </div>
           <div class="detail-item">
-            <label>贷款银行:</label>
+                <label>贷款银行</label>
             <span>{{ selectedLoan.bank }}</span>
           </div>
           <div class="detail-item">
-            <label>还款期限:</label>
+                <label>还款期限</label>
             <span>{{ selectedLoan.term }}个月</span>
           </div>
           <div class="detail-item">
-            <label>还款方式:</label>
+                <label>还款方式</label>
             <span>{{ getRepaymentMethodText(selectedLoan.repaymentMethod) }}</span>
           </div>
           <div class="detail-item">
-            <label>申请状态:</label>
+                <label>申请状态</label>
             <span :class="['loan-status', selectedLoan.status]">
               {{ getLoanStatusText(selectedLoan.status) }}
             </span>
           </div>
           <div class="detail-item">
-            <label>申请时间:</label>
+                <label>申请时间</label>
             <span>{{ selectedLoan.applicationDate }}</span>
           </div>
         </div>
+          </div>
+
+          <!-- 贷款计算标签页 -->
+          <div v-if="activeDetailTab === 'calculator'" class="tab-content">
+            <div class="calculator-section">
+              <div class="calculator-controls">
+                <button 
+                  @click="calculateLoan('equal-installment')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  等额本息计算
+                </button>
+                <button 
+                  @click="calculateLoan('equal-principal')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  等额本金计算
+                </button>
+                <button 
+                  @click="calculateLoan('compare')" 
+                  class="calc-btn"
+                  :disabled="isCalculating"
+                >
+                  两种方式比较
+                </button>
+              </div>
+
+              <div v-if="isCalculating" class="loading">
+                <div class="spinner"></div>
+                <span>计算中...</span>
+              </div>
+
+              <!-- 计算结果显示 -->
+              <div v-if="calculationResult" class="calculation-result">
+                <!-- 等额本息结果 -->
+                <div v-if="calculationResult.type === 'equalInstallment'" class="result-section">
+                  <h4>等额本息还款计算结果</h4>
+                  <div class="result-summary">
+                    <div class="summary-item">
+                      <label>每月还款额</label>
+                      <span class="highlight">￥{{ calculationResult.monthlyPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总还款额</label>
+                      <span>￥{{ calculationResult.totalPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总利息</label>
+                      <span>￥{{ calculationResult.totalInterest?.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 等额本金结果 -->
+                <div v-if="calculationResult.type === 'equalPrincipal'" class="result-section">
+                  <h4>等额本金还款计算结果</h4>
+                  <div class="result-summary">
+                    <div class="summary-item">
+                      <label>首月还款额</label>
+                      <span class="highlight">￥{{ calculationResult.firstMonthPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>末月还款额</label>
+                      <span>￥{{ calculationResult.lastMonthPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总还款额</label>
+                      <span>￥{{ calculationResult.totalPayment?.toLocaleString() }}</span>
+                    </div>
+                    <div class="summary-item">
+                      <label>总利息</label>
+                      <span>￥{{ calculationResult.totalInterest?.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 比较结果 -->
+                <div v-if="calculationResult.equalInstallment && calculationResult.equalPrincipal" class="result-section">
+                  <h4>还款方式比较</h4>
+                  <div class="comparison-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>还款方式</th>
+                          <th>月供</th>
+                          <th>总还款额</th>
+                          <th>总利息</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>等额本息</td>
+                          <td>￥{{ calculationResult.equalInstallment.monthlyPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalInstallment.totalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalInstallment.totalInterest?.toLocaleString() }}</td>
+                        </tr>
+                        <tr>
+                          <td>等额本金</td>
+                          <td>￥{{ calculationResult.equalPrincipal.firstMonthPayment?.toLocaleString() }}~￥{{ calculationResult.equalPrincipal.lastMonthPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalPrincipal.totalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ calculationResult.equalPrincipal.totalInterest?.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div v-if="calculationResult.comparison" class="comparison-recommendation">
+                    <p class="recommendation">{{ calculationResult.comparison.recommendation }}</p>
+                  </div>
+                </div>
+
+                <!-- 详细还款计划表格 -->
+                <div v-if="calculationResult.schedule && calculationResult.schedule.length > 0" class="schedule-section">
+                  <h4>还款计划明细（前12期）</h4>
+                  <div class="schedule-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>期数</th>
+                          <th>月供总额</th>
+                          <th>本金</th>
+                          <th>利息</th>
+                          <th>剩余本金</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(item, index) in calculationResult.schedule.slice(0, 12)" :key="index">
+                          <td>第{{ item.period }}期</td>
+                          <td>￥{{ item.monthlyPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.principalPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.interestPayment?.toLocaleString() }}</td>
+                          <td>￥{{ item.remainingPrincipal?.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 还款管理标签页 -->
+          <div v-if="activeDetailTab === 'repayment'" class="tab-content">
+            <div class="repayment-section">
+              <div class="repayment-controls">
+                <button @click="loadRepaymentSchedule" class="calc-btn" :disabled="isLoadingRepayment">
+                  {{ isLoadingRepayment ? '加载中...' : '获取还款计划' }}
+                </button>
+                <button v-if="selectedSchedules.length > 0" @click="showBatchModifyModal = true" class="calc-btn modify-btn">
+                  批量修改 ({{ selectedSchedules.length }})
+                </button>
+                <button v-if="repaymentSchedule.length > 0" @click="toggleSelectAll" class="calc-btn select-btn">
+                  {{ selectedSchedules.length === repaymentSchedule.filter(s => s.status !== 'paid').length ? '取消全选' : '全选' }}
+                </button>
+              </div>
+
+              <!-- 还款统计 -->
+              <div v-if="repaymentStats" class="repayment-stats">
+                <h4>还款统计</h4>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <label>总期数</label>
+                    <span>{{ repaymentStats.total_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>已还期数</label>
+                    <span>{{ repaymentStats.paid_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>待还期数</label>
+                    <span>{{ repaymentStats.pending_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>逾期期数</label>
+                    <span class="overdue">{{ repaymentStats.overdue_periods }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>还款进度</label>
+                    <span>{{ repaymentStats.payment_progress }}%</span>
+                  </div>
+                  <div class="stat-item">
+                    <label>剩余应还金额</label>
+                    <span>￥{{ repaymentStats.remaining_amount?.toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: repaymentStats.payment_progress + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- 还款计划列表 -->
+              <div v-if="repaymentSchedule && repaymentSchedule.length > 0" class="repayment-schedule">
+                <h4>还款计划（前20期）</h4>
+                <div class="schedule-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>选择</th>
+                        <th>期数</th>
+                        <th>到期日期</th>
+                        <th>应还总额</th>
+                        <th>本金</th>
+                        <th>利息</th>
+                        <th>滞纳金</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in repaymentSchedule.slice(0, 20)" :key="item.period_number">
+                        <td>
+                          <input 
+                            v-if="item.status !== 'paid'"
+                            type="checkbox"
+                            :checked="selectedSchedules.some(s => s.period_number === item.period_number)"
+                            @change="toggleScheduleSelection(item)"
+                          />
+                        </td>
+                        <td>第{{ item.period_number }}期</td>
+                        <td>{{ formatDate(item.due_date) }}</td>
+                        <td>￥{{ item.total_amount?.toLocaleString() }}</td>
+                        <td>￥{{ item.principal_amount?.toLocaleString() }}</td>
+                        <td>￥{{ item.interest_amount?.toLocaleString() }}</td>
+                        <td>￥{{ (item.late_fee || 0).toLocaleString() }}</td>
+                        <td>
+                          <span :class="['payment-status', item.status]">
+                            {{ getPaymentStatusText(item.status) }}
+                          </span>
+                        </td>
+                        <td class="action-buttons">
+                          <button 
+                            v-if="item.status !== 'paid'"
+                            @click="selectPaymentSchedule(item)"
+                            class="action-btn pay"
+                            title="记录还款"
+                          >
+                            记录
+                          </button>
+                          <button 
+                            v-if="item.status !== 'paid'"
+                            @click="selectScheduleForModify(item)"
+                            class="action-btn modify"
+                            title="修改计划"
+                          >
+                            修改
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修改单期还款计划模态框 -->
+    <div v-if="showModifyScheduleModal" class="modal-overlay" @click="showModifyScheduleModal = false">
+      <div class="modal-content modify-schedule-modal" @click.stop>
+        <h3>修改还款计划 - 第{{ modifyScheduleForm.period_number }}期</h3>
+        <form @submit.prevent="modifySchedule" class="modify-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>到期日期</label>
+              <input v-model="modifyScheduleForm.due_date" type="date" required />
+            </div>
+            <div class="form-group">
+              <label>应还总额</label>
+              <input 
+                v-model.number="modifyScheduleForm.total_amount" 
+                type="number" 
+                step="0.01" 
+                min="0"
+                required 
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>应还本金</label>
+              <input 
+                v-model.number="modifyScheduleForm.principal_amount" 
+                type="number" 
+                step="0.01" 
+                min="0"
+                required 
+              />
+            </div>
+            <div class="form-group">
+              <label>应还利息</label>
+              <input 
+                v-model.number="modifyScheduleForm.interest_amount" 
+                type="number" 
+                step="0.01" 
+                min="0"
+                required 
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>滞纳金</label>
+              <input 
+                v-model.number="modifyScheduleForm.late_fee" 
+                type="number" 
+                step="0.01" 
+                min="0"
+              />
+            </div>
+            <div class="form-group amount-check">
+              <label>金额校验</label>
+              <div class="amount-check-result">
+                <span>本金 + 利息 + 滞纳金 = </span>
+                <span :class="{ 'error': Math.abs((modifyScheduleForm.principal_amount + modifyScheduleForm.interest_amount + modifyScheduleForm.late_fee) - modifyScheduleForm.total_amount) > 0.01 }">
+                  ￥{{ ((modifyScheduleForm.principal_amount + modifyScheduleForm.interest_amount + modifyScheduleForm.late_fee) || 0).toLocaleString() }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>修改说明</label>
+            <textarea v-model="modifyScheduleForm.notes" rows="3" placeholder="请输入修改原因..."></textarea>
+          </div>
+          
         <div class="modal-actions">
-          <button @click="showViewLoanModal = false" class="confirm-btn">关闭</button>
+            <button type="button" @click="showModifyScheduleModal = false" class="cancel-btn">取消</button>
+            <button type="submit" class="confirm-btn" :disabled="isModifyingSchedule">
+              {{ isModifyingSchedule ? '修改中...' : '确认修改' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 批量修改模态框 -->
+    <div v-if="showBatchModifyModal" class="modal-overlay" @click="showBatchModifyModal = false">
+      <div class="modal-content batch-modify-modal" @click.stop>
+        <h3>批量修改还款计划</h3>
+        <div class="selected-info">
+          <p>已选择 <strong>{{ selectedSchedules.length }}</strong> 期进行批量修改</p>
+        </div>
+        
+        <form @submit.prevent="batchModifySchedule" class="batch-form">
+          <div class="form-group">
+            <label>修改类型</label>
+            <select v-model="batchModifyType" required>
+              <option value="date">批量调整日期</option>
+              <option value="amount">批量调整金额</option>
+            </select>
+          </div>
+          
+          <div v-if="batchModifyType === 'date'" class="form-group">
+            <label>新的起始日期</label>
+            <input v-model="batchModifyValue" type="date" required />
+            <small>后续期数将自动按月递增</small>
+          </div>
+          
+          <div v-if="batchModifyType === 'amount'" class="form-group">
+            <label>调整比例 (%)</label>
+            <input 
+              v-model.number="batchModifyValue" 
+              type="number" 
+              step="0.1"
+              placeholder="例如：5 表示增加5%，-10 表示减少10%"
+              required 
+            />
+            <small>正数表示增加，负数表示减少</small>
+          </div>
+          
+          <div class="preview-section" v-if="selectedSchedules.length > 0">
+            <h4>预览前3期修改结果:</h4>
+            <div class="preview-list">
+              <div v-for="(schedule, index) in selectedSchedules.slice(0, 3)" :key="schedule.period_number" class="preview-item">
+                <span>第{{ schedule.period_number }}期:</span>
+                <span v-if="batchModifyType === 'date'">
+                  {{ formatDate(schedule.due_date) }} → 
+                  {{ formatPreviewDate(batchModifyValue, index) }}
+                </span>
+                <span v-if="batchModifyType === 'amount'">
+                  ￥{{ schedule.total_amount?.toLocaleString() }} → 
+                  ￥{{ Math.round(schedule.total_amount * (1 + (batchModifyValue || 0) / 100) * 100) / 100 }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="showBatchModifyModal = false" class="cancel-btn">取消</button>
+            <button type="submit" class="confirm-btn" :disabled="isModifyingSchedule">
+              {{ isModifyingSchedule ? '修改中...' : '确认批量修改' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 记录还款模态框 -->
+    <div v-if="showRecordPaymentModal" class="modal-overlay" @click="showRecordPaymentModal = false">
+      <div class="modal-content" @click.stop>
+        <h3>记录还款</h3>
+        <div v-if="selectedPaymentSchedule" class="payment-form">
+          <div class="payment-info">
+            <p><strong>期数:</strong> 第{{ selectedPaymentSchedule.period_number }}期</p>
+            <p><strong>应还金额:</strong> ￥{{ selectedPaymentSchedule.total_amount?.toLocaleString() }}</p>
+            <p><strong>到期日期:</strong> {{ formatDate(selectedPaymentSchedule.due_date) }}</p>
+          </div>
+          
+          <form @submit.prevent="recordPayment">
+            <div class="form-group">
+              <label>还款金额</label>
+              <input 
+                v-model.number="paymentForm.paid_amount" 
+                type="number" 
+                :max="selectedPaymentSchedule.total_amount"
+                step="0.01"
+                required 
+              />
+            </div>
+            
+            <div class="form-group">
+              <label>支付方式</label>
+              <select v-model="paymentForm.payment_method" required>
+                <option value="">请选择支付方式</option>
+                <option value="bank_transfer">银行转账</option>
+                <option value="cash">现金</option>
+                <option value="online_payment">在线支付</option>
+                <option value="check">支票</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>交易号</label>
+              <input v-model="paymentForm.transaction_id" type="text" />
+            </div>
+            
+            <div class="form-group">
+              <label>还款日期</label>
+              <input v-model="paymentForm.paid_date" type="date" />
+            </div>
+            
+            <div class="form-group">
+              <label>备注</label>
+              <textarea v-model="paymentForm.notes" rows="3"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+              <button type="button" @click="showRecordPaymentModal = false" class="cancel-btn">取消</button>
+              <button type="submit" class="confirm-btn" :disabled="isRecordingPayment">
+                {{ isRecordingPayment ? '记录中...' : '确认记录' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -364,7 +849,7 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
-import { loanService, userService } from '../services/index.js'
+import { loanService, userService, loanCalculatorService, repaymentService } from '../services/index.js'
 
 export default {
   name: 'AdminDashboard',
@@ -377,8 +862,23 @@ export default {
     const showAddLoanModal = ref(false)
     const showViewLoanModal = ref(false)
     const showEditLoanModal = ref(false)
+    const showRecordPaymentModal = ref(false)
+    const showModifyScheduleModal = ref(false)
+    const showBatchModifyModal = ref(false)
     const isLoading = ref(false)
     const error = ref(null)
+    const activeDetailTab = ref('basic')
+    
+    // 计算相关状态
+    const isCalculating = ref(false)
+    const calculationResult = ref(null)
+    
+    // 还款计划相关状态
+    const isLoadingRepayment = ref(false)
+    const repaymentSchedule = ref([])
+    const repaymentStats = ref(null)
+    const selectedPaymentSchedule = ref(null)
+    const isRecordingPayment = ref(false)
     
     // 通知系统
     const notifications = ref([])
@@ -430,6 +930,32 @@ export default {
       repaymentMethod: '',
       status: 'pending'
     })
+    
+    // 还款表单数据
+    const paymentForm = reactive({
+      paid_amount: 0,
+      payment_method: '',
+      transaction_id: '',
+      paid_date: new Date().toISOString().split('T')[0],
+      notes: ''
+    })
+
+    // 修改还款计划表单数据
+    const modifyScheduleForm = reactive({
+      period_number: 0,
+      due_date: '',
+      total_amount: 0,
+      principal_amount: 0,
+      interest_amount: 0,
+      late_fee: 0,
+      notes: ''
+    })
+
+    // 批量修改相关状态
+    const selectedSchedules = ref([])
+    const batchModifyType = ref('date') // 'date', 'amount', 'custom'
+    const batchModifyValue = ref('')
+    const isModifyingSchedule = ref(false)
     
     // 菜单项
     const menuItems = [
@@ -546,6 +1072,10 @@ export default {
       console.log('Token状态:', token ? `存在 (长度: ${token.length})` : '不存在')
       console.log('用户状态:', user ? `存在: ${user}` : '不存在')
       
+      // 关键：验证申请人姓名问题
+      console.log('🔍 验证申请人姓名问题:')
+      console.log('前端发送的申请人姓名:', newLoan.applicantName)
+      
       isLoading.value = true
       
       try {
@@ -567,11 +1097,21 @@ export default {
           status: 'pending'
         }
         
-        console.log('发送贷款数据（下划线格式）:', loanData)
-        console.log('还款方式映射:', newLoan.repaymentMethod, '->', loanData.repayment_method)
-        console.log('当前用户:', currentUser.value)
+        console.log('发送给后端的申请人姓名:', loanData.applicant_name)
         
         const result = await loanService.createLoan(loanData)
+        
+        // 检查后端是否覆盖了申请人姓名
+        if (result.success && result.data?.loan) {
+          const backendApplicantName = result.data.loan.applicant_name
+          console.log('后端返回的申请人姓名:', backendApplicantName)
+          
+          if (backendApplicantName !== loanData.applicant_name) {
+            console.warn('⚠️ 后端覆盖了申请人姓名！')
+            console.warn(`发送: "${loanData.applicant_name}" -> 返回: "${backendApplicantName}"`)
+            console.warn('这是后端的问题，请查看 BACKEND_ISSUE_GUIDE.md')
+          }
+        }
         
         if (result.success) {
           // 重新获取贷款列表
@@ -606,7 +1146,13 @@ export default {
           isLoading.value = true
           
           try {
-            const result = await loanService.approveLoan(loan.id)
+            const approvalData = {
+              status: 'approved',
+              approved_amount: loan.amount,
+              approved_rate: loan.interestRate,
+              remark: '管理员审批通过'
+            }
+            const result = await loanService.approveLoan(loan.id, approvalData)
             
             if (result.success) {
               // 重新获取贷款列表
@@ -656,7 +1202,20 @@ export default {
     // 查看贷款详情
     const viewLoan = (loan) => {
       selectedLoan.value = loan
+      console.log('选中的贷款信息:', loan)
+      console.log('贷款基本数据:', {
+        amount: loan.amount,
+        interestRate: loan.interestRate,
+        term: loan.term,
+        repaymentMethod: loan.repaymentMethod
+      })
       showViewLoanModal.value = true
+      activeDetailTab.value = 'basic'
+      // 重置计算结果和还款数据
+      calculationResult.value = null
+      repaymentSchedule.value = []
+      repaymentStats.value = null
+      selectedPaymentSchedule.value = null
     }
     
     // 编辑贷款
@@ -814,6 +1373,344 @@ export default {
       return statusMap[status] || status
     }
     
+    // 贷款计算功能
+    const calculateLoan = async (type) => {
+      if (!selectedLoan.value) return
+      
+      console.log('开始计算贷款，类型:', type)
+      console.log('贷款数据:', selectedLoan.value)
+      
+      isCalculating.value = true
+      
+      try {
+        const principal = Number(selectedLoan.value.amount)
+        const annualRate = Number(selectedLoan.value.interestRate) / 100
+        const months = Number(selectedLoan.value.term)
+        
+        console.log('计算参数:', { principal, annualRate, months })
+        
+        if (type === 'equal-installment') {
+          try {
+            const result = await loanCalculatorService.calculateEqualInstallment(principal, annualRate, months)
+            console.log('等额本息API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
+          } catch (error) {
+            console.warn('API计算失败，使用本地计算:', error)
+            const localResult = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+            console.log('等额本息本地计算结果:', localResult)
+            calculationResult.value = localResult
+          }
+        } else if (type === 'equal-principal') {
+          try {
+            const result = await loanCalculatorService.calculateEqualPrincipal(principal, annualRate, months)
+            console.log('等额本金API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
+          } catch (error) {
+            console.warn('API计算失败，使用本地计算:', error)
+            const localResult = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+            console.log('等额本金本地计算结果:', localResult)
+            calculationResult.value = localResult
+          }
+        } else if (type === 'compare') {
+          try {
+            const result = await loanCalculatorService.compareRepaymentMethods(principal, annualRate, months)
+            console.log('比较方式API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
+          } catch (error) {
+            console.warn('API比较失败，使用本地计算:', error)
+            const equalInstallment = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+            const equalPrincipal = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+            
+            const localResult = {
+              equalInstallment,
+              equalPrincipal,
+              comparison: {
+                interestDifference: equalInstallment.totalInterest - equalPrincipal.totalInterest,
+                paymentDifference: equalInstallment.totalPayment - equalPrincipal.totalPayment,
+                recommendation: `等额本金比等额本息少支付利息 ${(equalInstallment.totalInterest - equalPrincipal.totalInterest).toLocaleString()} 元`
+              }
+            }
+            console.log('比较方式本地计算结果:', localResult)
+            calculationResult.value = localResult
+          }
+        }
+      } catch (error) {
+        console.error('贷款计算失败:', error)
+        showNotification('计算失败，请稍后重试', 'error')
+      } finally {
+        isCalculating.value = false
+        console.log('计算完成，最终结果:', calculationResult.value)
+      }
+    }
+    
+    // 加载还款计划
+    const loadRepaymentSchedule = async () => {
+      if (!selectedLoan.value || !selectedLoan.value.id) {
+        console.error('贷款ID无效，无法加载还款计划')
+        showNotification('贷款ID无效，无法加载还款计划', 'error')
+        return
+      }
+      
+      isLoadingRepayment.value = true
+      
+      try {
+        // 尝试从API获取还款计划
+        console.log('开始加载还款计划，贷款ID:', selectedLoan.value.id)
+        const scheduleResult = await repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 50)
+        const statsResult = await repaymentService.getPaymentStats(selectedLoan.value.id)
+        
+        console.log('API返回的还款计划数据:', scheduleResult)
+        console.log('API返回的统计数据:', statsResult)
+        
+        // 根据API返回的数据结构来设置
+        if (Array.isArray(scheduleResult.data)) {
+          repaymentSchedule.value = scheduleResult.data
+        } else if (scheduleResult.data && scheduleResult.data.items) {
+          repaymentSchedule.value = scheduleResult.data.items
+        } else if (scheduleResult.data && scheduleResult.data.schedules) {
+          repaymentSchedule.value = scheduleResult.data.schedules
+        } else {
+          repaymentSchedule.value = []
+        }
+        
+        repaymentStats.value = statsResult.data || scheduleResult.data?.payment_stats || null
+        
+        console.log('设置后的还款计划长度:', repaymentSchedule.value.length)
+        if (repaymentSchedule.value.length > 0) {
+          console.log('第一期API数据示例:', repaymentSchedule.value[0])
+          console.log('第一期金额信息:', {
+            total: repaymentSchedule.value[0]?.total_amount,
+            principal: repaymentSchedule.value[0]?.principal_amount,
+            interest: repaymentSchedule.value[0]?.interest_amount
+          })
+        } else {
+          console.warn('API返回空数据，没有还款计划')
+        }
+      } catch (error) {
+        console.error('API获取还款计划失败:', error)
+        showNotification('获取还款计划失败: ' + error.message, 'error')
+      } finally {
+        isLoadingRepayment.value = false
+      }
+    }
+    
+
+    
+    // 选择还款计划项
+    const selectPaymentSchedule = (schedule) => {
+      selectedPaymentSchedule.value = schedule
+      paymentForm.paid_amount = schedule.total_amount
+      showRecordPaymentModal.value = true
+    }
+    
+    // 记录还款
+    const recordPayment = async () => {
+      if (!selectedLoan.value || !selectedPaymentSchedule.value) return
+      
+      isRecordingPayment.value = true
+      
+      try {
+        if (selectedLoan.value.id) {
+          // 尝试调用API记录还款
+          const result = await repaymentService.recordPayment(
+            selectedLoan.value.id,
+            selectedPaymentSchedule.value.period_number,
+            paymentForm
+          )
+          
+          if (result.success) {
+            showNotification('还款记录成功！', 'success')
+            showRecordPaymentModal.value = false
+            // 重新加载还款计划
+            await loadRepaymentSchedule()
+          } else {
+            showNotification(`记录失败: ${result.message}`, 'error')
+          }
+        } else {
+          showNotification('贷款ID无效，无法记录还款', 'error')
+        }
+      } catch (error) {
+        console.error('记录还款失败:', error)
+        showNotification('记录还款失败，请稍后重试', 'error')
+      } finally {
+        isRecordingPayment.value = false
+      }
+    }
+    
+    // 格式化日期
+    const formatDate = (dateString) => {
+      return repaymentService.formatDate(dateString)
+    }
+
+    // 格式化预览日期
+    const formatPreviewDate = (baseDate, index) => {
+      if (!baseDate) return ''
+      const date = new Date(baseDate)
+      date.setMonth(date.getMonth() + index)
+      return date.toLocaleDateString('zh-CN')
+    }
+    
+    // 获取还款状态文本
+    const getPaymentStatusText = (status) => {
+      return repaymentService.getPaymentStatusText(status)
+    }
+
+    // 选择要修改的还款计划项
+    const selectScheduleForModify = (schedule) => {
+      if (schedule.status === 'paid') {
+        showNotification('已完成的还款不能修改', 'warning')
+        return
+      }
+      
+      Object.assign(modifyScheduleForm, {
+        period_number: schedule.period_number,
+        due_date: schedule.due_date.split('T')[0], // 转换为YYYY-MM-DD格式
+        total_amount: schedule.total_amount,
+        principal_amount: schedule.principal_amount,
+        interest_amount: schedule.interest_amount,
+        late_fee: schedule.late_fee || 0,
+        notes: ''
+      })
+      
+      showModifyScheduleModal.value = true
+    }
+
+    // 修改单期还款计划
+    const modifySchedule = async () => {
+      if (!selectedLoan.value || !modifyScheduleForm.period_number) return
+
+      // 验证数据
+      const errors = repaymentService.validateModificationData(modifyScheduleForm)
+      if (errors.length > 0) {
+        showNotification(errors.join(', '), 'error')
+        return
+      }
+
+      isModifyingSchedule.value = true
+      
+      try {
+        const updateData = {
+          due_date: modifyScheduleForm.due_date,
+          total_amount: modifyScheduleForm.total_amount,
+          principal_amount: modifyScheduleForm.principal_amount,
+          interest_amount: modifyScheduleForm.interest_amount,
+          late_fee: modifyScheduleForm.late_fee,
+          notes: modifyScheduleForm.notes
+        }
+
+        const result = await repaymentService.modifySchedulePeriod(
+          selectedLoan.value.id,
+          modifyScheduleForm.period_number,
+          updateData
+        )
+
+        if (result.success) {
+          showNotification('还款计划修改成功！', 'success')
+          showModifyScheduleModal.value = false
+          
+          // 重新加载还款计划
+          await loadRepaymentSchedule()
+        } else {
+          showNotification(`修改失败: ${result.message}`, 'error')
+        }
+      } catch (error) {
+        console.error('修改还款计划失败:', error)
+        showNotification('修改失败，请稍后重试', 'error')
+      } finally {
+        isModifyingSchedule.value = false
+      }
+    }
+
+    // 切换批量选择
+    const toggleScheduleSelection = (schedule) => {
+      const index = selectedSchedules.value.findIndex(s => s.period_number === schedule.period_number)
+      if (index > -1) {
+        selectedSchedules.value.splice(index, 1)
+      } else {
+        selectedSchedules.value.push(schedule)
+      }
+    }
+
+    // 全选/取消全选
+    const toggleSelectAll = () => {
+      if (selectedSchedules.value.length === repaymentSchedule.value.length) {
+        selectedSchedules.value = []
+      } else {
+        selectedSchedules.value = [...repaymentSchedule.value.filter(s => s.status !== 'paid')]
+      }
+    }
+
+    // 批量修改还款计划
+    const batchModifySchedule = async () => {
+      if (selectedSchedules.value.length === 0) {
+        showNotification('请选择要修改的还款计划', 'warning')
+        return
+      }
+
+      isModifyingSchedule.value = true
+      
+      try {
+        let schedules = []
+        
+        if (batchModifyType.value === 'date') {
+          // 批量修改日期
+          schedules = selectedSchedules.value.map((schedule, index) => {
+            const baseDate = new Date(batchModifyValue.value)
+            baseDate.setMonth(baseDate.getMonth() + index)
+            
+            return {
+              period_number: schedule.period_number,
+              due_date: baseDate.toISOString().split('T')[0],
+              notes: `批量调整还款日期`
+            }
+          })
+        } else if (batchModifyType.value === 'amount') {
+          // 批量调整金额（按比例）
+          const adjustmentRatio = parseFloat(batchModifyValue.value) / 100
+          
+          schedules = selectedSchedules.value.map(schedule => ({
+            period_number: schedule.period_number,
+            total_amount: Math.round(schedule.total_amount * (1 + adjustmentRatio) * 100) / 100,
+            principal_amount: Math.round(schedule.principal_amount * (1 + adjustmentRatio) * 100) / 100,
+            interest_amount: Math.round(schedule.interest_amount * (1 + adjustmentRatio) * 100) / 100,
+            notes: `批量调整金额 ${adjustmentRatio > 0 ? '+' : ''}${(adjustmentRatio * 100).toFixed(2)}%`
+          }))
+        }
+
+        const result = await repaymentService.batchModifySchedule(
+          selectedLoan.value.id,
+          schedules
+        )
+
+        if (result.success) {
+          const successCount = result.data.modified_schedules?.length || 0
+          const errorCount = result.data.errors?.length || 0
+          
+          showNotification(
+            `批量修改完成，成功${successCount}条，失败${errorCount}条`,
+            errorCount > 0 ? 'warning' : 'success'
+          )
+          
+          if (result.data.errors && result.data.errors.length > 0) {
+            console.warn('批量修改部分失败:', result.data.errors)
+          }
+          
+          showBatchModifyModal.value = false
+          selectedSchedules.value = []
+          
+          // 重新加载还款计划
+          await loadRepaymentSchedule()
+        } else {
+          showNotification(`批量修改失败: ${result.message}`, 'error')
+        }
+      } catch (error) {
+        console.error('批量修改失败:', error)
+        showNotification('批量修改失败，请稍后重试', 'error')
+      } finally {
+        isModifyingSchedule.value = false
+      }
+    }
+    
     // 登出
     const logout = async () => {
       showConfirm(
@@ -901,6 +1798,9 @@ export default {
       showAddLoanModal,
       showViewLoanModal,
       showEditLoanModal,
+      showRecordPaymentModal,
+      showModifyScheduleModal,
+      showBatchModifyModal,
       isLoading,
       error,
       loans,
@@ -910,7 +1810,21 @@ export default {
       newLoan,
       selectedLoan,
       editingLoan,
+      paymentForm,
+      modifyScheduleForm,
+      selectedSchedules,
+      batchModifyType,
+      batchModifyValue,
+      isModifyingSchedule,
       menuItems,
+      activeDetailTab,
+      isCalculating,
+      calculationResult,
+      isLoadingRepayment,
+      repaymentSchedule,
+      repaymentStats,
+      selectedPaymentSchedule,
+      isRecordingPayment,
       
       // 计算属性
       currentUser,
@@ -921,6 +1835,18 @@ export default {
       deleteLoan,
       viewLoan,
       editLoan,
+      calculateLoan,
+      loadRepaymentSchedule,
+      selectPaymentSchedule,
+      recordPayment,
+      selectScheduleForModify,
+      modifySchedule,
+      toggleScheduleSelection,
+      toggleSelectAll,
+      batchModifySchedule,
+      formatDate,
+      formatPreviewDate,
+      getPaymentStatusText,
       getRepaymentMethodText,
       getLoanStatusText,
       logout,
@@ -1772,5 +2698,494 @@ export default {
 
 .cancel-btn:hover {
   background: #d1d9e0;
+}
+
+/* 新增样式：贷款详情弹窗 */
+.loan-detail-modal {
+  max-width: 900px;
+  max-height: 90vh;
+  padding: 0;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #7f8c8d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #f8f9fa;
+  color: #e74c3c;
+}
+
+.modal-body {
+  padding: 20px 30px 30px;
+}
+
+/* 标签页样式 */
+.detail-tabs {
+  display: flex;
+  border-bottom: 2px solid #e1e8ed;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #7f8c8d;
+  transition: all 0.3s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  color: #667eea;
+}
+
+.tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.tab-content {
+  min-height: 300px;
+}
+
+/* 计算器样式 */
+.calculator-section {
+  padding: 20px 0;
+}
+
+.calculator-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.calc-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.calc-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.calc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.calc-btn.record-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+}
+
+.calc-btn.record-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  color: #7f8c8d;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e1e8ed;
+  border-top: 2px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 计算结果样式 */
+.calculation-result {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.result-section {
+  margin-bottom: 30px;
+}
+
+.result-section h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.summary-item label {
+  display: block;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.summary-item span {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.summary-item .highlight {
+  color: #e74c3c;
+  font-size: 20px;
+}
+
+/* 比较表格样式 */
+.comparison-table {
+  overflow-x: auto;
+  margin: 15px 0;
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.comparison-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.comparison-recommendation {
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.recommendation {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+/* 详细计划表格样式 */
+.schedule-section {
+  margin-top: 20px;
+}
+
+.schedule-table {
+  overflow-x: auto;
+  margin-top: 15px;
+}
+
+.schedule-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 10px 8px;
+  text-align: right;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.schedule-table th:first-child,
+.schedule-table td:first-child {
+  text-align: left;
+}
+
+.schedule-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* 还款计划样式 */
+.repayment-section {
+  padding: 20px 0;
+}
+
+.repayment-controls {
+  margin-bottom: 20px;
+}
+
+.repayment-stats {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.repayment-stats h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-item label {
+  display: block;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.stat-item span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.stat-item .overdue {
+  color: #e74c3c;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e1e8ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.payment-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.payment-status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.payment-status.paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.payment-status.overdue {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.payment-status.partial {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.action-btn.pay {
+  background: #28a745;
+  color: white;
+}
+
+.action-btn.pay:hover {
+  background: #218838;
+}
+
+.action-btn.modify {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  margin-left: 4px;
+}
+
+.action-btn.modify:hover {
+  background: linear-gradient(135deg, #0056b3, #004085);
+  transform: translateY(-1px);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.calc-btn.modify-btn {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+}
+
+.calc-btn.select-btn {
+  background: linear-gradient(135deg, #6c757d, #545b62);
+  color: white;
+}
+
+/* 修改模态框样式 */
+.modify-schedule-modal, .batch-modify-modal {
+  max-width: 600px;
+  width: 90%;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.amount-check-result {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.amount-check-result .error {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.selected-info {
+  background: #e3f2fd;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.preview-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.preview-section h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.modify-form, .batch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.schedule-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 还款表单样式 */
+.payment-form {
+  margin-top: 20px;
+}
+
+.payment-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.payment-info p {
+  margin: 5px 0;
+  color: #2c3e50;
 }
 </style> 

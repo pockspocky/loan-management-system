@@ -23,9 +23,9 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://10.108.56.221:8080',
+        target: 'https://zlyoszudwbcc.sealoshzh.site',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             console.log('代理请求:', req.method, req.url);
