@@ -553,31 +553,31 @@
                 <div class="stats-grid">
                   <div class="stat-item">
                     <label>总期数</label>
-                    <span>{{ repaymentStats.total_periods }}</span>
+                    <span>{{ repaymentStats.payment_stats?.total_periods || repaymentStats.total_periods || 0 }}</span>
                   </div>
                   <div class="stat-item">
                     <label>已还期数</label>
-                    <span>{{ repaymentStats.paid_periods }}</span>
+                    <span>{{ repaymentStats.payment_stats?.paid_periods || repaymentStats.paid_periods || 0 }}</span>
                   </div>
                   <div class="stat-item">
                     <label>待还期数</label>
-                    <span>{{ repaymentStats.pending_periods }}</span>
+                    <span>{{ repaymentStats.payment_stats?.pending_periods || repaymentStats.pending_periods || 0 }}</span>
                   </div>
                   <div class="stat-item">
                     <label>还款进度</label>
-                    <span>{{ repaymentStats.payment_progress }}%</span>
+                    <span>{{ (repaymentStats.payment_stats?.payment_progress || repaymentStats.payment_progress || 0).toFixed(1) }}%</span>
                   </div>
                   <div class="stat-item">
                     <label>总应还金额</label>
-                    <span>￥{{ repaymentStats.total_amount?.toLocaleString() }}</span>
+                    <span>￥{{ (repaymentStats.payment_stats?.total_amount || repaymentStats.total_amount || 0).toLocaleString() }}</span>
                   </div>
                   <div class="stat-item">
                     <label>已还金额</label>
-                    <span>￥{{ repaymentStats.paid_amount?.toLocaleString() }}</span>
+                    <span>￥{{ (repaymentStats.payment_stats?.paid_amount || repaymentStats.paid_amount || 0).toLocaleString() }}</span>
                   </div>
                 </div>
                 <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: repaymentStats.payment_progress + '%' }"></div>
+                  <div class="progress-fill" :style="{ width: (repaymentStats.payment_stats?.payment_progress || repaymentStats.payment_progress || 0) + '%' }"></div>
                 </div>
               </div>
 
@@ -894,23 +894,70 @@ export default {
     // 加载还款计划
     const loadRepaymentSchedule = async () => {
       if (!selectedLoan.value || !selectedLoan.value.id) {
-        // 如果没有ID，使用本地生成的还款计划
-        generateLocalRepaymentSchedule()
+        console.warn('贷款ID缺失，无法获取还款计划')
+        alert('贷款ID缺失，无法获取还款计划')
         return
       }
       
       isLoadingRepayment.value = true
+      console.log('开始加载还款计划，贷款ID:', selectedLoan.value.id)
       
       try {
-        // 尝试从API获取还款计划
-        const scheduleResult = await repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 50)
-        const statsResult = await repaymentService.getPaymentStats(selectedLoan.value.id)
+        // 同时获取还款计划和统计信息
+        const [scheduleResult, statsResult] = await Promise.all([
+          repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 50),
+          repaymentService.getPaymentStats(selectedLoan.value.id)
+        ])
         
-        repaymentSchedule.value = scheduleResult.items || []
-        repaymentStats.value = scheduleResult.payment_stats || statsResult
+        console.log('还款计划API响应:', scheduleResult)
+        console.log('还款统计API响应:', statsResult)
+        
+        // 处理还款计划数据（支持多种API响应格式）
+        let scheduleData = []
+        if (scheduleResult.success && scheduleResult.data) {
+          if (Array.isArray(scheduleResult.data)) {
+            scheduleData = scheduleResult.data
+          } else if (scheduleResult.data.items) {
+            scheduleData = scheduleResult.data.items
+          } else if (scheduleResult.data.repayment_schedule) {
+            scheduleData = scheduleResult.data.repayment_schedule
+          }
+        } else if (Array.isArray(scheduleResult)) {
+          scheduleData = scheduleResult
+        } else if (scheduleResult.items) {
+          scheduleData = scheduleResult.items
+        }
+        
+        // 处理还款统计数据
+        let statsData = null
+        if (statsResult.success && statsResult.data) {
+          statsData = statsResult.data
+        } else if (statsResult && typeof statsResult === 'object') {
+          statsData = statsResult
+        }
+        
+        repaymentSchedule.value = scheduleData
+        repaymentStats.value = statsData
+        
+        console.log('处理后的还款计划:', repaymentSchedule.value)
+        console.log('处理后的还款统计:', repaymentStats.value)
+        
+        if (!scheduleData || scheduleData.length === 0) {
+          console.warn('后端未返回还款计划数据')
+          alert('后端未返回还款计划数据，请检查后端实现')
+        }
+        
       } catch (error) {
-        console.warn('API获取还款计划失败，使用本地生成:', error)
-        generateLocalRepaymentSchedule()
+        console.error('获取还款计划失败:', error)
+        console.error('错误详情:', error.response?.data)
+        
+        // 显示具体错误信息
+        const errorMessage = error.response?.data?.message || error.message || '获取还款计划失败'
+        alert(`获取还款计划失败: ${errorMessage}`)
+        
+        // 清空数据
+        repaymentSchedule.value = []
+        repaymentStats.value = null
       } finally {
         isLoadingRepayment.value = false
       }
