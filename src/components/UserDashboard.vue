@@ -583,7 +583,7 @@
 
               <!-- 还款计划列表 -->
               <div v-if="repaymentSchedule && repaymentSchedule.length > 0" class="repayment-schedule">
-                <h4>还款计划（前20期）</h4>
+                <h4>还款计划（共{{ repaymentSchedule.length }}期）</h4>
                 <div class="schedule-table">
                   <table>
                     <thead>
@@ -597,7 +597,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="item in repaymentSchedule.slice(0, 20)" :key="item.period_number">
+                      <tr v-for="item in repaymentSchedule" :key="item.period_number">
                         <td>第{{ item.period_number }}期</td>
                         <td>{{ formatDate(item.due_date) }}</td>
                         <td>￥{{ item.total_amount?.toLocaleString() }}</td>
@@ -905,7 +905,7 @@ export default {
       try {
         // 同时获取还款计划和统计信息
         const [scheduleResult, statsResult] = await Promise.all([
-          repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 50),
+          repaymentService.getRepaymentSchedule(selectedLoan.value.id, 1, 500),
           repaymentService.getPaymentStats(selectedLoan.value.id)
         ])
         

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_CONFIG, generateRequestId } from '../config/api.js'
+import PrecisionMath from '../utils/precisionMath.js'
 
 // 创建axios实例
 const apiClient = axios.create({
@@ -128,8 +129,15 @@ export class RepaymentService {
     if (data.total_amount !== undefined && 
         data.principal_amount !== undefined && 
         data.interest_amount !== undefined) {
-      const sum = data.principal_amount + data.interest_amount + (data.late_fee || 0)
-      if (Math.abs(sum - data.total_amount) > 0.01) {
+      const sum = PrecisionMath.add(
+        PrecisionMath.add(
+          PrecisionMath.safeDecimal(data.principal_amount),
+          PrecisionMath.safeDecimal(data.interest_amount)
+        ),
+        PrecisionMath.safeDecimal(data.late_fee, 0)
+      )
+      const totalAmount = PrecisionMath.safeDecimal(data.total_amount)
+      if (!PrecisionMath.equals(sum, totalAmount, 0.01)) {
         errors.push('本金、利息和滞纳金之和必须等于总还款额')
       }
     }
@@ -146,9 +154,9 @@ export class RepaymentService {
   // 生成本地还款计划（作为备用）
   generateLocalRepaymentSchedule(loanData) {
     const { amount, interestRate, term, repaymentMethod } = loanData
-    const principal = Number(amount)
-    const annualRate = Number(interestRate) / 100
-    const months = Number(term)
+    const principal = PrecisionMath.toNumber(PrecisionMath.safeDecimal(amount))
+    const annualRate = PrecisionMath.toNumber(PrecisionMath.divide(PrecisionMath.safeDecimal(interestRate), 100))
+    const months = PrecisionMath.toNumber(PrecisionMath.safeDecimal(term))
     
     console.log('还款计划生成参数:', { principal, annualRate, months, repaymentMethod })
     
@@ -168,24 +176,31 @@ export class RepaymentService {
   generateEqualInstallmentSchedule(principal, annualRate, months) {
     console.log('开始生成等额本息计划:', { principal, annualRate, months })
     
-    if (!principal || !annualRate || !months || principal <= 0 || annualRate <= 0 || months <= 0) {
+    const P = PrecisionMath.safeDecimal(principal)
+    const r = PrecisionMath.safeDecimal(annualRate)
+    const n = PrecisionMath.safeDecimal(months)
+    
+    if (!PrecisionMath.isValidNumber(principal) || !PrecisionMath.isValidNumber(annualRate) || !PrecisionMath.isValidNumber(months) ||
+        PrecisionMath.lessThanOrEqual(P, 0) || PrecisionMath.lessThan(r, 0) || PrecisionMath.lessThanOrEqual(n, 0)) {
       console.error('参数无效:', { principal, annualRate, months })
       return []
     }
     
-    const monthlyRate = annualRate / 12
-    const monthlyPayment = (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-                          (Math.pow(1 + monthlyRate, months) - 1)
+    const monthlyRate = PrecisionMath.divide(r, 12)
+    const monthlyPayment = PrecisionMath.calculateEqualInstallment(P, r, PrecisionMath.toNumber(n))
     
-    console.log('计算结果:', { monthlyRate, monthlyPayment })
+    console.log('计算结果:', { 
+      monthlyRate: PrecisionMath.toString(monthlyRate, 6), 
+      monthlyPayment: PrecisionMath.toString(monthlyPayment) 
+    })
     
     const schedule = []
-    let remainingPrincipal = principal
+    let remainingPrincipal = P
     
-    for (let i = 1; i <= months; i++) {
-      const interestPayment = remainingPrincipal * monthlyRate
-      const principalPayment = monthlyPayment - interestPayment
-      remainingPrincipal -= principalPayment
+    for (let i = 1; i <= PrecisionMath.toNumber(n); i++) {
+      const interestPayment = PrecisionMath.multiply(remainingPrincipal, monthlyRate)
+      const principalPayment = PrecisionMath.subtract(monthlyPayment, interestPayment)
+      remainingPrincipal = PrecisionMath.subtract(remainingPrincipal, principalPayment)
       
       // 生成到期日期（假设从当前月份开始）
       const dueDate = new Date()
@@ -194,10 +209,10 @@ export class RepaymentService {
       schedule.push({
         period_number: i,
         due_date: dueDate.toISOString(),
-        total_amount: Number(monthlyPayment.toFixed(2)),
-        principal_amount: Number(principalPayment.toFixed(2)),
-        interest_amount: Number(interestPayment.toFixed(2)),
-        remaining_principal: Number(Math.max(0, remainingPrincipal).toFixed(2)),
+        total_amount: PrecisionMath.toNumber(PrecisionMath.round(monthlyPayment)),
+        principal_amount: PrecisionMath.toNumber(PrecisionMath.round(principalPayment)),
+        interest_amount: PrecisionMath.toNumber(PrecisionMath.round(interestPayment)),
+        remaining_principal: PrecisionMath.toNumber(PrecisionMath.round(PrecisionMath.greaterThan(remainingPrincipal, 0) ? remainingPrincipal : PrecisionMath.decimal(0))),
         status: 'pending',
         paid_amount: 0,
         paid_principal: 0,
@@ -220,16 +235,20 @@ export class RepaymentService {
 
   // 生成等额本金还款计划
   generateEqualPrincipalSchedule(principal, annualRate, months) {
-    const monthlyRate = annualRate / 12
-    const monthlyPrincipal = principal / months
+    const P = PrecisionMath.safeDecimal(principal)
+    const r = PrecisionMath.safeDecimal(annualRate)
+    const n = PrecisionMath.safeDecimal(months)
+    
+    const monthlyRate = PrecisionMath.divide(r, 12)
+    const monthlyPrincipal = PrecisionMath.divide(P, n)
     
     const schedule = []
-    let remainingPrincipal = principal
+    let remainingPrincipal = P
     
-    for (let i = 1; i <= months; i++) {
-      const interestPayment = remainingPrincipal * monthlyRate
-      const monthlyPayment = monthlyPrincipal + interestPayment
-      remainingPrincipal -= monthlyPrincipal
+    for (let i = 1; i <= PrecisionMath.toNumber(n); i++) {
+      const interestPayment = PrecisionMath.multiply(remainingPrincipal, monthlyRate)
+      const monthlyPayment = PrecisionMath.add(monthlyPrincipal, interestPayment)
+      remainingPrincipal = PrecisionMath.subtract(remainingPrincipal, monthlyPrincipal)
       
       // 生成到期日期
       const dueDate = new Date()
@@ -238,10 +257,10 @@ export class RepaymentService {
       schedule.push({
         period_number: i,
         due_date: dueDate.toISOString(),
-        total_amount: Number(monthlyPayment.toFixed(2)),
-        principal_amount: Number(monthlyPrincipal.toFixed(2)),
-        interest_amount: Number(interestPayment.toFixed(2)),
-        remaining_principal: Number(Math.max(0, remainingPrincipal).toFixed(2)),
+        total_amount: PrecisionMath.toNumber(PrecisionMath.round(monthlyPayment)),
+        principal_amount: PrecisionMath.toNumber(PrecisionMath.round(monthlyPrincipal)),
+        interest_amount: PrecisionMath.toNumber(PrecisionMath.round(interestPayment)),
+        remaining_principal: PrecisionMath.toNumber(PrecisionMath.round(PrecisionMath.greaterThan(remainingPrincipal, 0) ? remainingPrincipal : PrecisionMath.decimal(0))),
         status: 'pending',
         paid_amount: 0,
         paid_principal: 0,
@@ -289,9 +308,12 @@ export class RepaymentService {
       payment_progress: 0
     }
 
+    let totalAmount = PrecisionMath.decimal(0)
+    let paidAmount = PrecisionMath.decimal(0)
+
     schedule.forEach(item => {
-      stats.total_amount += item.total_amount
-      stats.paid_amount += item.paid_amount
+      totalAmount = PrecisionMath.add(totalAmount, PrecisionMath.safeDecimal(item.total_amount))
+      paidAmount = PrecisionMath.add(paidAmount, PrecisionMath.safeDecimal(item.paid_amount))
       
       switch (item.status) {
         case 'paid':
@@ -309,9 +331,12 @@ export class RepaymentService {
       }
     })
 
-    stats.remaining_amount = stats.total_amount - stats.paid_amount
-    stats.payment_progress = stats.total_amount > 0 ? 
-      Math.round((stats.paid_amount / stats.total_amount) * 100) : 0
+    stats.total_amount = PrecisionMath.toNumber(PrecisionMath.round(totalAmount))
+    stats.paid_amount = PrecisionMath.toNumber(PrecisionMath.round(paidAmount))
+    stats.remaining_amount = PrecisionMath.toNumber(PrecisionMath.round(PrecisionMath.subtract(totalAmount, paidAmount)))
+    
+    stats.payment_progress = PrecisionMath.greaterThan(totalAmount, 0) ? 
+      PrecisionMath.toNumber(PrecisionMath.round(PrecisionMath.multiply(PrecisionMath.divide(paidAmount, totalAmount), 100))) : 0
 
     return stats
   }
