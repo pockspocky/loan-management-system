@@ -18,16 +18,7 @@
           />
         </div>
         
-        <div class="input-group">
-          <label for="email">邮箱</label>
-          <input
-            id="email"
-            v-model="formData.email"
-            type="email"
-            placeholder="请输入邮箱地址"
-            required
-          />
-        </div>
+
         
         <div class="input-group">
           <label for="password">密码</label>
@@ -55,6 +46,18 @@
           </div>
         </div>
         
+        <!-- 显示API错误信息 -->
+        <div v-if="errorMessage" class="error-message api-error">
+          {{ errorMessage }}
+          <div v-if="validationErrors && Object.keys(validationErrors).length > 0" class="validation-errors">
+            <ul>
+              <li v-for="(errors, field) in validationErrors" :key="field">
+                <strong>{{ getFieldName(field) }}:</strong> {{ errors.join(', ') }}
+              </li>
+            </ul>
+          </div>
+        </div>
+        
         <div class="checkbox-group">
           <label class="checkbox-label">
             <input
@@ -70,8 +73,8 @@
           </label>
         </div>
         
-        <button type="submit" class="register-btn" :disabled="!isFormValid">
-          注册
+        <button type="submit" class="register-btn" :disabled="!isFormValid || isLoading">
+          {{ isLoading ? '注册中...' : '注册' }}
         </button>
       </form>
       
@@ -86,18 +89,22 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { authService } from '../services/index.js'
 
 export default {
   name: 'RegisterPage',
   emits: ['switch-to-login'],
-  setup() {
+  setup(props, { emit }) {
     const formData = ref({
       username: '',
-      email: '',
       password: '',
       confirmPassword: '',
       agreeTerm: false
     })
+    
+    const isLoading = ref(false)
+    const errorMessage = ref('')
+    const validationErrors = ref({})
     
     const passwordMismatch = computed(() => {
       return formData.value.confirmPassword && 
@@ -106,21 +113,50 @@ export default {
     
     const isFormValid = computed(() => {
       return formData.value.username.length > 0 &&
-             formData.value.email.length > 0 &&
              formData.value.password.length > 0 &&
              formData.value.confirmPassword.length > 0 &&
              formData.value.password === formData.value.confirmPassword &&
              formData.value.agreeTerm
     })
     
-    const handleRegister = () => {
-      if (isFormValid.value) {
-        console.log('注册信息:', {
+    const getFieldName = (field) => {
+      const fieldNames = {
+        username: '用户名',
+        password: '密码'
+      }
+      return fieldNames[field] || field
+    }
+    
+    const handleRegister = async () => {
+      if (!isFormValid.value || isLoading.value) return
+      
+      // 清除之前的错误信息
+      errorMessage.value = ''
+      validationErrors.value = {}
+      isLoading.value = true
+      
+      try {
+        const registerData = {
           username: formData.value.username,
-          email: formData.value.email,
-          password: '***'
-        })
-        alert(`注册成功！欢迎 ${formData.value.username}！注册功能待后端实现。`)
+          password: formData.value.password
+        }
+        
+        const result = await authService.register(registerData)
+        
+        if (result.success) {
+          alert(`注册成功！欢迎 ${formData.value.username}！请登录使用。`)
+          emit('switch-to-login')
+        } else {
+          errorMessage.value = result.message || '注册失败，请重试'
+          if (result.errors) {
+            validationErrors.value = result.errors
+          }
+        }
+      } catch (error) {
+        console.error('注册错误:', error)
+        errorMessage.value = '注册失败，请检查网络连接后重试'
+      } finally {
+        isLoading.value = false
       }
     }
     
@@ -134,8 +170,12 @@ export default {
     
     return {
       formData,
+      isLoading,
+      errorMessage,
+      validationErrors,
       passwordMismatch,
       isFormValid,
+      getFieldName,
       handleRegister,
       showTerms,
       showPrivacy
@@ -203,7 +243,7 @@ export default {
 }
 
 .input-group input[type="text"],
-.input-group input[type="email"],
+.input-group input[type="tel"],
 .input-group input[type="password"] {
   width: 100%;
   padding: 12px 16px;
@@ -228,6 +268,28 @@ export default {
   color: #ff4757;
   font-size: 12px;
   margin-top: 5px;
+}
+
+.api-error {
+  background: rgba(255, 71, 87, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #ff4757;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.validation-errors {
+  margin-top: 8px;
+}
+
+.validation-errors ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.validation-errors li {
+  margin-bottom: 4px;
 }
 
 .checkbox-group {
