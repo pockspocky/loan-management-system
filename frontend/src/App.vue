@@ -14,11 +14,12 @@
       />
       <AdminDashboard 
         v-else-if="currentPage === 'admin-dashboard'"
-        @go-to-login="currentPage = 'login'"
+        @go-to-login="handleLogout"
       />
       <UserDashboard 
         v-else-if="currentPage === 'user-dashboard'"
         @go-to-login="currentPage = 'login'"
+        @logout="handleLogout"
       />
     </transition>
   </div>
@@ -50,6 +51,13 @@ export default {
       // 页面跳转已在LoginPage组件中处理
     }
     
+    // 处理退出登录事件
+    const handleLogout = async () => {
+      await authStore.logout()
+      currentPage.value = 'login'
+      console.log('用户已退出登录')
+    }
+    
     // 组件挂载时检查认证状态
     onMounted(() => {
       authStore.initAuth()
@@ -66,7 +74,8 @@ export default {
     
     return {
       currentPage,
-      handleLoginSuccess
+      handleLoginSuccess,
+      handleLogout
     }
   }
 }

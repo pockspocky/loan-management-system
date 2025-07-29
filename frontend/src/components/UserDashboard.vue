@@ -114,7 +114,7 @@
                     <td class="rate">{{ loan.interestRate }}%</td>
                     <td>{{ loan.bank }}</td>
                     <td class="term">{{ loan.term }}个月</td>
-                    <td class="repayment-method">{{ loan.repaymentMethod }}</td>
+                    <td class="repayment-method">{{ getRepaymentMethodText(loan.repaymentMethod) }}</td>
                     <td>
                       <span :class="['loan-status', loan.status]">
                         {{ getLoanStatusText(loan.status) }}
@@ -692,6 +692,13 @@ export default {
     const repaymentSchedule = ref([])
     const repaymentStats = ref(null)
     
+    // 加载和错误状态
+    const isLoading = ref(false)
+    const error = ref(null)
+    
+    // 当前用户信息
+    const currentUser = ref(null)
+    
     const menuItems = [
       { id: 'overview', text: '概览', icon: '🏠' },
       { id: 'profile', text: '个人资料', icon: '👤' },
@@ -783,29 +790,150 @@ export default {
       return statusMap[status] || status
     }
 
-    const addLoan = () => {
-      const loan = {
-        id: Date.now(),
-        ...newLoan.value,
-        amount: Number(newLoan.value.amount),
-        interestRate: Number(newLoan.value.interestRate),
-        term: Number(newLoan.value.term),
-        status: 'pending',
-        applicationDate: new Date().toLocaleDateString()
+    // 获取还款方式中文文本
+    const getRepaymentMethodText = (method) => {
+      const methodMap = {
+        'equal_payment': '等额本息',
+        'equal_principal': '等额本金'
       }
-      loans.value.push(loan)
+      return methodMap[method] || method
+    }
+
+    // 从后端获取贷款列表
+    const fetchLoans = async () => {
+      isLoading.value = true
+      error.value = null
       
-      // 重置表单
-      newLoan.value = {
-        loanName: '',
-        applicantName: '',
-        amount: '',
-        interestRate: '',
-        bank: '',
-        term: '',
-        repaymentMethod: ''
+      try {
+        const { loanService } = await import('../services/index.js')
+        const result = await loanService.getLoans()
+        
+        console.log('获取贷款列表响应:', result)
+        
+        if (result.success) {
+          // 检查数据结构并转换字段名
+          if (result.data && result.data.items && Array.isArray(result.data.items)) {
+            // 转换下划线格式到驼峰格式
+            loans.value = result.data.items.map(loan => ({
+              id: loan._id,
+              loanName: loan.loan_name,
+              applicantName: loan.applicant_name,
+              amount: loan.amount,
+              interestRate: loan.interest_rate,
+              bank: loan.bank,
+              term: loan.term,
+              repaymentMethod: loan.repayment_method,
+              status: loan.status,
+              applicationDate: loan.created_at ? new Date(loan.created_at).toLocaleDateString() : '未知',
+              applicantId: loan.applicant_id?._id || loan.applicant_id
+            }))
+            console.log('转换后的贷款列表:', loans.value)
+          } else {
+            console.warn('未预期的数据结构:', result.data)
+            loans.value = []
+          }
+        } else {
+          error.value = result.message
+          console.error('获取贷款列表失败:', result.message)
+        }
+      } catch (err) {
+        error.value = '获取贷款列表失败'
+        console.error('获取贷款列表错误:', err)
+      } finally {
+        isLoading.value = false
       }
-      showAddLoanModal.value = false
+    }
+
+    const addLoan = async () => {
+      // 验证表单
+      if (!newLoan.value.loanName.trim()) {
+        alert('请输入贷款名称')
+        return
+      }
+      if (!newLoan.value.applicantName.trim()) {
+        alert('请输入申请人姓名')
+        return
+      }
+      if (!newLoan.value.amount || newLoan.value.amount <= 0) {
+        alert('请输入有效的贷款金额')
+        return
+      }
+      if (!newLoan.value.interestRate || newLoan.value.interestRate <= 0) {
+        alert('请输入有效的年利率')
+        return
+      }
+      if (!newLoan.value.bank.trim()) {
+        alert('请输入贷款银行')
+        return
+      }
+      if (!newLoan.value.term || newLoan.value.term <= 0) {
+        alert('请输入有效的还款期限')
+        return
+      }
+      if (!newLoan.value.repaymentMethod) {
+        alert('请选择还款方式')
+        return
+      }
+
+      isLoading.value = true
+      
+      try {
+        // 导入贷款服务
+        const { loanService } = await import('../services/index.js')
+        
+        // 还款方式映射：中文转英文
+        const repaymentMethodMap = {
+          '等额本息': 'equal_payment',
+          '等额本金': 'equal_principal'
+        }
+        
+        // 准备发送给后端的数据
+        const loanData = {
+          loan_name: newLoan.value.loanName,
+          applicant_name: newLoan.value.applicantName,
+          amount: Number(newLoan.value.amount),
+          interest_rate: Number(newLoan.value.interestRate),
+          bank: newLoan.value.bank,
+          term: Number(newLoan.value.term),
+          repayment_method: repaymentMethodMap[newLoan.value.repaymentMethod] || newLoan.value.repaymentMethod,
+          status: 'pending'
+        }
+        
+        console.log('发送贷款申请数据:', loanData)
+        
+        // 调用后端API
+        const result = await loanService.createLoan(loanData)
+        
+        console.log('贷款申请API响应:', result)
+        
+        if (result.success) {
+          // 申请成功，重新获取贷款列表
+          await fetchLoans()
+          
+          // 重置表单
+          newLoan.value = {
+            loanName: '',
+            applicantName: '',
+            amount: '',
+            interestRate: '',
+            bank: '',
+            term: '',
+            repaymentMethod: ''
+          }
+          showAddLoanModal.value = false
+          
+          alert('贷款申请成功！')
+        } else {
+          console.error('贷款申请失败:', result.message)
+          alert(`申请失败: ${result.message}`)
+        }
+      } catch (error) {
+        console.error('贷款申请错误:', error)
+        const errorMessage = error.response?.data?.message || error.message || '申请失败，请稍后重试'
+        alert(`申请失败: ${errorMessage}`)
+      } finally {
+        isLoading.value = false
+      }
     }
     
     const viewLoan = (loan) => {
@@ -823,22 +951,63 @@ export default {
       showEditLoanModal.value = true
     }
     
-    const updateLoan = () => {
-      const index = loans.value.findIndex(loan => loan.id === editingLoan.value.id)
-      if (index !== -1) {
-        loans.value[index] = {
-          ...editingLoan.value,
-          amount: Number(editingLoan.value.amount),
-          interestRate: Number(editingLoan.value.interestRate),
-          term: Number(editingLoan.value.term)
-        }
+    const updateLoan = async () => {
+      if (!editingLoan.value.id) {
+        alert('贷款ID缺失，无法更新')
+        return
       }
-      showEditLoanModal.value = false
+
+      isLoading.value = true
+      
+      try {
+        const { loanService } = await import('../services/index.js')
+        
+        // 还款方式映射：中文转英文
+        const repaymentMethodMap = {
+          '等额本息': 'equal_payment',
+          '等额本金': 'equal_principal'
+        }
+        
+        const loanData = {
+          loan_name: editingLoan.value.loanName,
+          applicant_name: editingLoan.value.applicantName,
+          amount: Number(editingLoan.value.amount),
+          interest_rate: Number(editingLoan.value.interestRate),
+          bank: editingLoan.value.bank,
+          term: Number(editingLoan.value.term),
+          repayment_method: repaymentMethodMap[editingLoan.value.repaymentMethod] || editingLoan.value.repaymentMethod
+        }
+        
+        console.log('更新贷款数据:', loanData)
+        
+        const result = await loanService.updateLoan(editingLoan.value.id, loanData)
+        
+        console.log('更新贷款API响应:', result)
+        
+        if (result.success) {
+          // 更新成功，重新获取贷款列表
+          await fetchLoans()
+          showEditLoanModal.value = false
+          alert('贷款更新成功！')
+        } else {
+          console.error('更新贷款失败:', result.message)
+          alert(`更新失败: ${result.message}`)
+        }
+      } catch (error) {
+        console.error('更新贷款错误:', error)
+        const errorMessage = error.response?.data?.message || error.message || '更新失败，请稍后重试'
+        alert(`更新失败: ${errorMessage}`)
+      } finally {
+        isLoading.value = false
+      }
     }
     
     // 贷款计算功能
     const calculateLoan = async (type) => {
       if (!selectedLoan.value) return
+      
+      console.log('开始计算贷款，类型:', type)
+      console.log('贷款数据:', selectedLoan.value)
       
       isCalculating.value = true
       
@@ -847,32 +1016,41 @@ export default {
         const annualRate = Number(selectedLoan.value.interestRate) / 100
         const months = Number(selectedLoan.value.term)
         
+        console.log('计算参数:', { principal, annualRate, months })
+        
         if (type === 'equal-installment') {
           try {
             const result = await loanCalculatorService.calculateEqualInstallment(principal, annualRate, months)
-            calculationResult.value = result
+            console.log('等额本息API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
           } catch (error) {
             console.warn('API计算失败，使用本地计算:', error)
-            calculationResult.value = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+            const localResult = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
+            console.log('等额本息本地计算结果:', localResult)
+            calculationResult.value = localResult
           }
         } else if (type === 'equal-principal') {
           try {
             const result = await loanCalculatorService.calculateEqualPrincipal(principal, annualRate, months)
-            calculationResult.value = result
+            console.log('等额本金API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
           } catch (error) {
             console.warn('API计算失败，使用本地计算:', error)
-            calculationResult.value = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+            const localResult = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
+            console.log('等额本金本地计算结果:', localResult)
+            calculationResult.value = localResult
           }
         } else if (type === 'compare') {
           try {
             const result = await loanCalculatorService.compareRepaymentMethods(principal, annualRate, months)
-            calculationResult.value = result
+            console.log('比较方式API返回结果:', result)
+            calculationResult.value = result.success ? result.data : result
           } catch (error) {
             console.warn('API比较失败，使用本地计算:', error)
             const equalInstallment = loanCalculatorService.calculateEqualInstallmentLocal(principal, annualRate, months)
             const equalPrincipal = loanCalculatorService.calculateEqualPrincipalLocal(principal, annualRate, months)
             
-            calculationResult.value = {
+            const localResult = {
               equalInstallment,
               equalPrincipal,
               comparison: {
@@ -881,6 +1059,8 @@ export default {
                 recommendation: `等额本金比等额本息少支付利息 ${(equalInstallment.totalInterest - equalPrincipal.totalInterest).toLocaleString()} 元`
               }
             }
+            console.log('比较方式本地计算结果:', localResult)
+            calculationResult.value = localResult
           }
         }
       } catch (error) {
@@ -888,6 +1068,7 @@ export default {
         alert('计算失败，请稍后重试')
       } finally {
         isCalculating.value = false
+        console.log('计算完成，最终结果:', calculationResult.value)
       }
     }
     
@@ -990,6 +1171,21 @@ export default {
     const logout = () => {
       emit('logout')
     }
+
+    // 组件初始化时获取贷款列表
+    const initializeComponent = async () => {
+      // 获取当前用户信息
+      const user = localStorage.getItem('user')
+      if (user) {
+        currentUser.value = JSON.parse(user)
+      }
+      
+      // 获取贷款列表
+      await fetchLoans()
+    }
+
+    // 立即初始化
+    initializeComponent()
     
     return {
       activeTab,
@@ -1014,6 +1210,9 @@ export default {
       isLoadingRepayment,
       repaymentSchedule,
       repaymentStats,
+      isLoading,
+      error,
+      currentUser,
       filteredTasks,
       toggleTaskStatus,
       addTask,
@@ -1023,9 +1222,11 @@ export default {
       updateLoan,
       calculateLoan,
       loadRepaymentSchedule,
+      fetchLoans,
       formatDate,
       getPaymentStatusText,
       getLoanStatusText,
+      getRepaymentMethodText,
       logout
     }
   }
