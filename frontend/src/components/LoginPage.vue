@@ -85,6 +85,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
+import { showInfo } from '../utils/dialogService.js'
 
 export default {
   name: 'LoginPage',
@@ -133,8 +134,11 @@ export default {
       }
     }
     
-    const handleForgotPassword = () => {
-      alert('忘记密码功能待实现')
+    const handleForgotPassword = async () => {
+      await showInfo('忘记密码功能待实现', {
+        title: '功能提示',
+        confirmText: '我知道了'
+      })
     }
     
     const goToAdminDashboard = () => {
