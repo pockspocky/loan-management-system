@@ -22,16 +22,21 @@
         @logout="handleLogout"
       />
     </transition>
+    
+    <!-- 全局对话框组件 -->
+    <GlobalDialog ref="globalDialog" />
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from './stores/authStore.js'
+import { setDialogInstance } from './utils/dialogService.js'
 import LoginPage from './components/LoginPage.vue'
 import RegisterPage from './components/RegisterPage.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import UserDashboard from './components/UserDashboard.vue'
+import GlobalDialog from './components/GlobalDialog.vue'
 
 export default {
   name: 'App',
@@ -39,11 +44,13 @@ export default {
     LoginPage,
     RegisterPage,
     AdminDashboard,
-    UserDashboard
+    UserDashboard,
+    GlobalDialog
   },
   setup() {
     const authStore = useAuthStore()
     const currentPage = ref('login')
+    const globalDialog = ref(null)
     
     // 处理登录成功事件
     const handleLoginSuccess = (user) => {
@@ -62,6 +69,12 @@ export default {
     onMounted(() => {
       authStore.initAuth()
       
+      // 初始化全局对话框服务
+      if (globalDialog.value) {
+        setDialogInstance(globalDialog.value)
+        console.log('全局对话框服务已初始化')
+      }
+      
       // 如果已经登录，自动跳转到相应页面
       if (authStore.state.isAuthenticated) {
         if (authStore.isAdmin.value) {
@@ -74,6 +87,7 @@ export default {
     
     return {
       currentPage,
+      globalDialog,
       handleLoginSuccess,
       handleLogout
     }

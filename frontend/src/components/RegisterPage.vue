@@ -90,6 +90,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { authService } from '../services/index.js'
+import { showSuccess, showInfo } from '../utils/dialogService.js'
 
 export default {
   name: 'RegisterPage',
@@ -144,7 +145,7 @@ export default {
         const result = await authService.register(registerData)
         
         if (result.success) {
-          alert(`注册成功！欢迎 ${formData.value.username}！请登录使用。`)
+          await showSuccess(`注册成功！欢迎 ${formData.value.username}！请登录使用。`)
           emit('switch-to-login')
         } else {
           errorMessage.value = result.message || '注册失败，请重试'
@@ -160,12 +161,18 @@ export default {
       }
     }
     
-    const showTerms = () => {
-      alert('用户协议内容待添加')
+    const showTerms = async () => {
+      await showInfo('用户协议内容待添加', {
+        title: '用户协议',
+        confirmText: '我知道了'
+      })
     }
     
-    const showPrivacy = () => {
-      alert('隐私政策内容待添加')
+    const showPrivacy = async () => {
+      await showInfo('隐私政策内容待添加', {
+        title: '隐私政策',
+        confirmText: '我知道了'
+      })
     }
     
     return {

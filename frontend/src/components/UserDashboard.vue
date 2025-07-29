@@ -669,6 +669,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { loanCalculatorService, repaymentService } from '../services/index.js'
+import { showAlert, showSuccess, showError, showWarning } from '../utils/dialogService.js'
 
 export default {
   name: 'UserDashboard',
@@ -847,31 +848,31 @@ export default {
     const addLoan = async () => {
       // 验证表单
       if (!newLoan.value.loanName.trim()) {
-        alert('请输入贷款名称')
+        await showWarning('请输入贷款名称', { title: '表单验证' })
         return
       }
       if (!newLoan.value.applicantName.trim()) {
-        alert('请输入申请人姓名')
+        await showWarning('请输入申请人姓名', { title: '表单验证' })
         return
       }
       if (!newLoan.value.amount || newLoan.value.amount <= 0) {
-        alert('请输入有效的贷款金额')
+        await showWarning('请输入有效的贷款金额', { title: '表单验证' })
         return
       }
       if (!newLoan.value.interestRate || newLoan.value.interestRate <= 0) {
-        alert('请输入有效的年利率')
+        await showWarning('请输入有效的年利率', { title: '表单验证' })
         return
       }
       if (!newLoan.value.bank.trim()) {
-        alert('请输入贷款银行')
+        await showWarning('请输入贷款银行', { title: '表单验证' })
         return
       }
       if (!newLoan.value.term || newLoan.value.term <= 0) {
-        alert('请输入有效的还款期限')
+        await showWarning('请输入有效的还款期限', { title: '表单验证' })
         return
       }
       if (!newLoan.value.repaymentMethod) {
-        alert('请选择还款方式')
+        await showWarning('请选择还款方式', { title: '表单验证' })
         return
       }
 
@@ -922,15 +923,15 @@ export default {
           }
           showAddLoanModal.value = false
           
-          alert('贷款申请成功！')
+          await showSuccess('贷款申请成功！')
         } else {
           console.error('贷款申请失败:', result.message)
-          alert(`申请失败: ${result.message}`)
+          await showError(`申请失败: ${result.message}`)
         }
       } catch (error) {
         console.error('贷款申请错误:', error)
         const errorMessage = error.response?.data?.message || error.message || '申请失败，请稍后重试'
-        alert(`申请失败: ${errorMessage}`)
+        await showError(`申请失败: ${errorMessage}`)
       } finally {
         isLoading.value = false
       }
@@ -953,7 +954,7 @@ export default {
     
     const updateLoan = async () => {
       if (!editingLoan.value.id) {
-        alert('贷款ID缺失，无法更新')
+        await showError('贷款ID缺失，无法更新', { title: '更新失败' })
         return
       }
 
@@ -988,15 +989,15 @@ export default {
           // 更新成功，重新获取贷款列表
           await fetchLoans()
           showEditLoanModal.value = false
-          alert('贷款更新成功！')
+          await showSuccess('贷款更新成功！')
         } else {
           console.error('更新贷款失败:', result.message)
-          alert(`更新失败: ${result.message}`)
+          await showError(`更新失败: ${result.message}`)
         }
       } catch (error) {
         console.error('更新贷款错误:', error)
         const errorMessage = error.response?.data?.message || error.message || '更新失败，请稍后重试'
-        alert(`更新失败: ${errorMessage}`)
+        await showError(`更新失败: ${errorMessage}`)
       } finally {
         isLoading.value = false
       }
@@ -1065,7 +1066,7 @@ export default {
         }
       } catch (error) {
         console.error('贷款计算失败:', error)
-        alert('计算失败，请稍后重试')
+        await showError('计算失败，请稍后重试', { title: '计算错误' })
       } finally {
         isCalculating.value = false
         console.log('计算完成，最终结果:', calculationResult.value)
@@ -1076,7 +1077,7 @@ export default {
     const loadRepaymentSchedule = async () => {
       if (!selectedLoan.value || !selectedLoan.value.id) {
         console.warn('贷款ID缺失，无法获取还款计划')
-        alert('贷款ID缺失，无法获取还款计划')
+        await showWarning('贷款ID缺失，无法获取还款计划', { title: '数据错误' })
         return
       }
       
@@ -1125,7 +1126,7 @@ export default {
         
         if (!scheduleData || scheduleData.length === 0) {
           console.warn('后端未返回还款计划数据')
-          alert('后端未返回还款计划数据，请检查后端实现')
+          await showWarning('后端未返回还款计划数据，请检查后端实现', { title: '数据异常' })
         }
         
       } catch (error) {
@@ -1134,7 +1135,7 @@ export default {
         
         // 显示具体错误信息
         const errorMessage = error.response?.data?.message || error.message || '获取还款计划失败'
-        alert(`获取还款计划失败: ${errorMessage}`)
+        await showError(`获取还款计划失败: ${errorMessage}`, { title: '加载失败' })
         
         // 清空数据
         repaymentSchedule.value = []
@@ -1145,7 +1146,7 @@ export default {
     }
     
     // 生成本地还款计划
-    const generateLocalRepaymentSchedule = () => {
+    const generateLocalRepaymentSchedule = async () => {
       if (!selectedLoan.value) return
       
       try {
@@ -1154,7 +1155,7 @@ export default {
         repaymentStats.value = repaymentService.calculatePaymentStats(schedule)
       } catch (error) {
         console.error('生成本地还款计划失败:', error)
-        alert('生成还款计划失败，请检查贷款信息')
+        await showError('生成还款计划失败，请检查贷款信息', { title: '生成失败' })
       }
     }
     
