@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+
+# Loan Management System Project Structure
+
+This is a monorepo loan management system with separate frontend and backend applications.
+
+## Directory Structure
+- `frontend/` - Vue.js application with Vite
+  - `src/components/` - Vue components (AdminDashboard.vue, UserDashboard.vue, etc.)
+  - `src/services/` - API service layer (index.js, loanCalculatorService.js, etc.)
+  - `src/stores/` - Pinia stores for state management
+  - `src/utils/` - Utility functions (precisionMath.js, dialogService.js, etc.)
+  - `src/config/` - Configuration files
+- `backend/` - Node.js Express API server
+  - `src/models/` - Mongoose models (User.js, Loan.js, etc.)
+  - `src/routes/` - Express route handlers (users.js, loans.js, auth.js, etc.)  
+  - `src/controllers/` - Business logic controllers
+  - `src/middleware/` - Custom middleware (auth.js, errorHandler.js)
+  - `src/utils/` - Backend utilities (validation.js, logger.js, etc.)
+  - `src/config/` - Database and app configuration
+- `docs/` - Project documentation and reports
+
+## Key Files
+- [frontend/src/components/AdminDashboard.vue](mdc:frontend/src/components/AdminDashboard.vue) - Main admin interface
+- [frontend/src/components/UserDashboard.vue](mdc:frontend/src/components/UserDashboard.vue) - User interface  
+- [frontend/src/services/index.js](mdc:frontend/src/services/index.js) - API service layer
+- [backend/src/routes/users.js](mdc:backend/src/routes/users.js) - User management API
+- [backend/src/models/User.js](mdc:backend/src/models/User.js) - User data model
+- [backend/src/app.js](mdc:backend/src/app.js) - Express app entry point
+
+## Development Servers
+- Frontend: http://localhost:5173 (Vite dev server)
+- Backend: http://localhost:8080 (Express server)  
+- Database: MongoDB on localhost:27017
+
+## Key Features Implemented
+- User authentication and authorization
+- User management (CRUD operations)
+- Loan management and calculations
+- Batch payment processing
+- Repayment schedule management
+- System logging and audit trails

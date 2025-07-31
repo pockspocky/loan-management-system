@@ -1,0 +1,92 @@
+---
+globs: *.vue
+---
+
+# Vue.js Component Standards
+
+Follow these patterns when working with Vue.js components in this loan management system.
+
+## Component Structure
+Always use Composition API with `<script setup>` syntax:
+
+```vue
+<template>
+  <!-- Template content -->
+</template>
+
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import { serviceName } from '../services/index.js'
+
+// Props
+const props = defineProps({
+  // prop definitions
+})
+
+// Emits
+const emit = defineEmits(['event-name'])
+
+// Reactive state
+const data = ref(null)
+const form = reactive({
+  field1: '',
+  field2: 0
+})
+
+// Computed properties
+const computedValue = computed(() => {
+  // computation
+})
+
+// Methods
+const methodName = async () => {
+  // method implementation
+}
+
+// Lifecycle
+onMounted(() => {
+  // initialization
+})
+</script>
+
+<style scoped>
+/* Component-specific styles */
+</style>
+```
+
+## Key Patterns Used in This Project
+
+### Service Integration
+- Import services from `../services/index.js`
+- Use async/await for API calls
+- Handle success/error responses consistently
+
+### Modal Management
+- Use `ref(false)` for modal visibility state
+- Close modals on backdrop click with `@click="modalName = false"`
+- Prevent event bubbling with `@click.stop` on modal content
+
+### Form Handling
+- Use `reactive()` for form objects
+- Implement `@submit.prevent` for form submission
+- Reset forms after successful operations using `Object.assign()`
+
+### User Feedback
+- Use `showNotification()` for operation feedback
+- Use `showConfirm()` for dangerous operations
+- Provide loading states with `isLoading` refs
+
+### Data Management
+- Use `ref([])` for arrays (users, loans, etc.)
+- Use `ref(null)` for selected items
+- Implement CRUD operations with proper error handling
+
+### Component Communication
+- Use props for parent-to-child data flow
+- Use emits for child-to-parent communication
+- Avoid direct DOM manipulation
+
+## File References
+- Main components: [AdminDashboard.vue](mdc:frontend/src/components/AdminDashboard.vue), [UserDashboard.vue](mdc:frontend/src/components/UserDashboard.vue)
+- Services: [index.js](mdc:frontend/src/services/index.js)
+- Utilities: [dialogService.js](mdc:frontend/src/utils/dialogService.js), [precisionMath.js](mdc:frontend/src/utils/precisionMath.js)

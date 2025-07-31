@@ -1,0 +1,113 @@
+---
+globs: frontend/src/services/**/*
+---
+
+# Frontend API Service Standards
+
+Follow these patterns when creating or updating API service methods.
+
+## Service Structure
+Organize services by domain with consistent error handling:
+
+```javascript
+import { apiClient, handleApiError } from './index.js';
+
+export const serviceNameService = {
+  async getItems(params = {}) {
+    try {
+      const response = await apiClient.get('/endpoint', { params });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async createItem(itemData) {
+    try {
+      const response = await apiClient.post('/endpoint', itemData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async updateItem(id, itemData) {
+    try {
+      const response = await apiClient.put(`/endpoint/${id}`, itemData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async deleteItem(id) {
+    try {
+      const response = await apiClient.delete(`/endpoint/${id}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  }
+};
+```
+
+## Standard CRUD Methods
+Implement these standard methods for each resource:
+
+- `getItems()` - List/search resources
+- `getItemById(id)` - Get single resource
+- `createItem(data)` - Create new resource
+- `updateItem(id, data)` - Update existing resource
+- `deleteItem(id)` - Delete resource
+
+## Specialized Methods
+For domain-specific operations:
+
+- `updateItemStatus(id, status)` - Status changes
+- `processItemAction(id, actionData)` - Complex operations
+- `getItemRelatedData(id)` - Related data fetching
+
+## Error Handling
+- Always use try-catch blocks
+- Return `handleApiError(error)` for consistent error handling
+- Let the UI components handle success/error display
+
+## API Client Configuration
+Use the configured `apiClient` which includes:
+- Base URL configuration
+- Authentication headers
+- Request/response interceptors
+- Timeout settings
+
+## Response Handling
+Services should return the raw API response data structure:
+
+```javascript
+// Expected API response structure
+{
+  success: boolean,
+  message: string,
+  data: any,
+  code: number,
+  timestamp: string
+}
+```
+
+## Parameter Handling
+- Use object destructuring for optional parameters
+- Provide sensible defaults
+- Support query parameters for list operations
+
+## Service Registration
+Export services in the main index file:
+
+```javascript
+// In frontend/src/services/index.js
+export { userService } from './userService.js';
+export { loanService } from './loanService.js';
+```
+
+## File References
+- Main service file: [index.js](mdc:frontend/src/services/index.js)
+- API configuration: [api.js](mdc:frontend/src/config/api.js)
+- Specialized services: [loanCalculatorService.js](mdc:frontend/src/services/loanCalculatorService.js)
