@@ -3,14 +3,22 @@
     <!-- 顶部导航栏 -->
     <header class="user-header">
       <div class="header-left">
-        <h1>用户仪表盘</h1>
-        <span class="user-badge">USER</span>
+        <div class="header-brand">
+          <h1 class="dashboard-title">用户仪表盘</h1>
+          <span class="user-badge">USER</span>
+        </div>
       </div>
       <div class="header-right">
         <div class="user-info">
-          <div class="avatar">👤</div>
-          <span>{{ currentUser?.username || '用户' }}</span>
-          <button @click="logout" class="logout-btn" :disabled="isLoading">退出登录</button>
+          <div class="user-avatar">👤</div>
+          <div class="user-details">
+            <span class="welcome-text">欢迎</span>
+            <span class="username">{{ currentUser?.username || '用户' }}</span>
+          </div>
+          <button @click="logout" class="logout-btn" :disabled="isLoading">
+            <span class="btn-icon">🚪</span>
+            <span class="btn-text">退出登录</span>
+          </button>
         </div>
       </div>
     </header>
@@ -1665,18 +1673,50 @@ export default {
 <style scoped>
 .user-dashboard {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.user-dashboard::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(78, 205, 196, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(68, 160, 141, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .user-header {
   background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
   color: white;
   padding: 0 30px;
-  height: 70px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
 }
 
 .header-left {
@@ -1701,32 +1741,85 @@ export default {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
+  padding: 10px 0;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
+.user-avatar {
+  width: 45px;
+  height: 45px;
   background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-}
-
-.logout-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
+  font-size: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
 }
 
+.user-avatar:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.welcome-text {
+  font-size: 12px;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.username {
+  font-size: 16px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.logout-btn {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.logout-btn:hover::before {
+  left: 100%;
+}
+
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .dashboard-content {
@@ -3094,5 +3187,374 @@ export default {
   .repayment-controls .calc-btn {
     width: 100%;
   }
+}
+
+/* 响应式设计 - 用户仪表盘优化版本 */
+
+/* 大屏设备 */
+@media (min-width: 1400px) {
+  .user-header {
+    padding: 0 50px;
+    height: 90px;
+  }
+  
+  .main-content {
+    padding: 50px;
+  }
+  
+  .welcome-card h2 {
+    font-size: 32px;
+  }
+}
+
+/* 中等屏幕 */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 240px;
+  }
+  
+  .nav-text {
+    font-size: 14px;
+  }
+  
+  .loans-table table {
+    min-width: 1000px;
+  }
+  
+  .loans-table th,
+  .loans-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 平板设备 */
+@media (max-width: 992px) {
+  .user-header {
+    padding: 0 20px;
+    height: 70px;
+  }
+  
+  .user-header h1 {
+    font-size: 20px;
+  }
+  
+  .dashboard-content {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    padding: 20px 0;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .nav-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 20px;
+    gap: 10px;
+  }
+  
+  .nav-item {
+    margin: 0;
+    min-width: 120px;
+    justify-content: center;
+    transform: none !important;
+  }
+  
+  .nav-item:hover {
+    transform: none !important;
+  }
+  
+  .nav-item.active {
+    transform: none !important;
+  }
+  
+  .main-content {
+    padding: 30px 20px;
+  }
+  
+  .welcome-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .add-btn {
+    align-self: stretch;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* 手机设备 */
+@media (max-width: 768px) {
+  .user-header {
+    padding: 0 15px;
+    height: 60px;
+    flex-wrap: wrap;
+  }
+  
+  .user-header h1 {
+    font-size: 18px;
+  }
+  
+  .user-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  
+  .user-info {
+    gap: 10px;
+  }
+  
+  .user-details {
+    display: none;
+  }
+  
+  .logout-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  .main-content {
+    padding: 20px 15px;
+  }
+  
+  .welcome-card {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .welcome-card h2 {
+    font-size: 22px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 20px;
+  }
+  
+  .section-header {
+    padding: 20px;
+    border-radius: 15px;
+  }
+  
+  .section-header h2 {
+    font-size: 22px;
+  }
+  
+  /* 表格移动端优化 */
+  .loans-table {
+    border-radius: 15px;
+    overflow: visible;
+  }
+  
+  .table-container {
+    overflow: visible;
+  }
+  
+  .loans-table table,
+  .loans-table tbody,
+  .loans-table tr,
+  .loans-table td {
+    display: block;
+  }
+  
+  .loans-table thead {
+    display: none;
+  }
+  
+  .loans-table tr {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 15px;
+    margin-bottom: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+  }
+  
+  .loans-table tr:hover {
+    transform: none;
+    box-shadow: 0 12px 35px rgba(78, 205, 196, 0.15);
+  }
+  
+  .loans-table td {
+    border: none;
+    padding: 8px 0;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+  
+  .loans-table td:before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #4a5568;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
+    margin-right: 15px;
+  }
+  
+  .loans-table td:last-child {
+    border-bottom: none;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    margin-right: 8px;
+    margin-bottom: 5px;
+  }
+  
+  /* 状态徽章优化 */
+  .loan-status {
+    margin-left: auto;
+  }
+  
+  /* 金额显示优化 */
+  .amount {
+    font-size: 16px;
+    font-weight: 800;
+  }
+  
+  /* 批量还款模态框优化 */
+  .batch-payment-modal {
+    max-width: 95vw;
+    margin: 20px auto;
+  }
+  
+  .preview-summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .preview-table {
+    overflow-x: auto;
+  }
+  
+  .preview-table table {
+    min-width: 600px;
+  }
+  
+  .repayment-controls {
+    flex-direction: column;
+  }
+  
+  .repayment-controls .calc-btn {
+    width: 100%;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .user-header {
+    padding: 0 10px;
+  }
+  
+  .main-content {
+    padding: 15px 10px;
+  }
+  
+  .welcome-card {
+    padding: 15px;
+  }
+  
+  .loans-table tr {
+    padding: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .loans-table td:before {
+    min-width: 70px;
+    font-size: 11px;
+  }
+  
+  .action-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 6px 8px;
+  }
+  
+  .stat-card {
+    padding: 15px;
+  }
+  
+  .batch-payment-modal {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+  }
+}
+
+/* 文字溢出处理 */
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.text-break {
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: normal;
+}
+
+/* 无障碍优化 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 美化滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 </style> 

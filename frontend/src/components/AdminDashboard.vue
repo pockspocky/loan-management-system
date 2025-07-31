@@ -2871,18 +2871,50 @@ export default {
 <style scoped>
 .admin-dashboard {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.admin-dashboard::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .admin-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 0 30px;
-  height: 70px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
 }
 
 .header-left {
@@ -2907,17 +2939,54 @@ export default {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.user-info span {
+  font-size: 15px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .logout-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.logout-btn:hover::before {
+  left: 100%;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .logout-btn:hover {
@@ -2926,14 +2995,30 @@ export default {
 
 .dashboard-content {
   display: flex;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 80px);
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar {
-  width: 260px;
-  background: white;
-  border-right: 1px solid #e1e8ed;
-  padding: 20px 0;
+  width: 280px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 30px 0;
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  pointer-events: none;
 }
 
 .nav-menu {
@@ -2944,68 +3029,166 @@ export default {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px 25px;
+  gap: 15px;
+  padding: 16px 30px;
+  margin: 2px 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
   border-left: 3px solid transparent;
 }
 
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .nav-item:hover {
-  background: #f8f9fa;
+  background: rgba(102, 126, 234, 0.08);
+  transform: translateX(4px);
+  box-shadow: 4px 4px 20px rgba(102, 126, 234, 0.15);
+}
+
+.nav-item:hover::before {
+  opacity: 1;
 }
 
 .nav-item.active {
-  background: #e3f2fd;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
   border-left-color: #667eea;
   color: #667eea;
+  transform: translateX(6px);
+  box-shadow: 6px 6px 25px rgba(102, 126, 234, 0.25);
+}
+
+.nav-item.active .nav-text {
+  font-weight: 600;
 }
 
 .nav-icon {
-  font-size: 18px;
+  font-size: 20px;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.1);
 }
 
 .nav-text {
   font-weight: 500;
+  font-size: 15px;
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .main-content {
   flex: 1;
-  padding: 30px;
+  padding: 40px;
   overflow-y: auto;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
 }
 
 .overview-section {
-  padding: 20px;
+  padding: 0;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
+  align-items: flex-end;
+  margin-bottom: 30px;
+  padding: 25px 30px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .section-header h2 {
-  color: #333;
-  font-size: 24px;
+  color: #2d3748;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 14px 28px;
+  border-radius: 14px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.add-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.add-btn:hover::before {
+  left: 100%;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .loans-table {
-  background: white;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.loans-table::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
+  pointer-events: none;
 }
 
 .table-container {
@@ -3036,25 +3219,51 @@ export default {
 
 .loans-table table {
   width: 100%;
-  min-width: 1200px; /* 设置表格最小宽度 */
+  min-width: 1200px;
   border-collapse: collapse;
-  white-space: nowrap; /* 防止文字换行 */
+  position: relative;
+  z-index: 1;
 }
 
 .loans-table th,
 .loans-table td {
-  padding: 15px 12px;
+  padding: 18px 16px;
   text-align: left;
-  border-bottom: 1px solid #e1e8ed;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .loans-table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  color: #333;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  backdrop-filter: blur(10px);
+  font-weight: 700;
+  color: #4a5568;
   position: sticky;
   top: 0;
   z-index: 10;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.loans-table td {
+  font-size: 14px;
+  color: #2d3748;
+  transition: all 0.2s ease;
+}
+
+.loans-table tr:hover td {
+  background: rgba(102, 126, 234, 0.04);
+  color: #1a202c;
+}
+
+.loans-table tr:hover {
+  transform: scale(1.002);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 /* 各列的具体宽度设置 */
@@ -3127,67 +3336,171 @@ export default {
 }
 
 .amount {
-  font-weight: 600;
+  font-weight: 700;
   color: #2d3748;
+  font-size: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .rate {
-  font-weight: 600;
-  color: #ff9800;
+  font-weight: 700;
+  color: #f56565;
+  font-size: 14px;
+  padding: 4px 8px;
+  background: rgba(245, 101, 101, 0.1);
+  border-radius: 6px;
+  display: inline-block;
 }
 
 .term {
-  color: #666;
+  color: #718096;
+  font-weight: 500;
 }
 
 .repayment-method {
-  color: #666;
+  color: #718096;
+  font-weight: 500;
+  font-size: 13px;
 }
 
 .loan-status {
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 6px 16px;
+  border-radius: 20px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1.5px solid transparent;
+}
+
+.loan-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s ease;
+}
+
+.loan-status:hover::before {
+  left: 100%;
 }
 
 .loan-status.pending {
-  background: #fff3e0;
-  color: #ff9800;
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 193, 7, 0.15) 100%);
+  color: #f57c00;
+  border-color: rgba(255, 152, 0, 0.3);
 }
 
 .loan-status.approved {
-  background: #d4edda;
-  color: #155724;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(129, 199, 132, 0.15) 100%);
+  color: #2e7d32;
+  border-color: rgba(76, 175, 80, 0.3);
 }
 
 .loan-status.completed {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(100, 181, 246, 0.15) 100%);
+  color: #1565c0;
+  border-color: rgba(33, 150, 243, 0.3);
 }
 
 .action-btn {
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 12px;
-  margin-right: 8px;
+  margin-right: 6px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1.5px solid transparent;
+  min-width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+  z-index: 0;
+}
+
+.action-btn:hover::before {
+  left: 100%;
+}
+
+.action-btn span {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .action-btn.view {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(100, 181, 246, 0.15) 100%);
+  color: #1565c0;
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.action-btn.view:hover {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.25) 0%, rgba(100, 181, 246, 0.25) 100%);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .action-btn.approve {
-  background: #d4edda;
-  color: #155724;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(129, 199, 132, 0.15) 100%);
+  color: #2e7d32;
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.action-btn.approve:hover {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.25) 0%, rgba(129, 199, 132, 0.25) 100%);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .action-btn.edit {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(186, 104, 200, 0.15) 100%);
+  color: #7b1fa2;
+  border-color: rgba(156, 39, 176, 0.3);
+}
+
+.action-btn.edit:hover {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.25) 0%, rgba(186, 104, 200, 0.25) 100%);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+.action-btn.delete {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(239, 154, 154, 0.15) 100%);
+  color: #d32f2f;
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
+.action-btn.delete:hover {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.25) 0%, rgba(239, 154, 154, 0.25) 100%);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
 }
 
 .action-btn.delete {
@@ -4895,7 +5208,240 @@ export default {
   font-size: 12px;
 }
 
+/* 响应式设计 - 优化版本 */
+
+/* 大屏设备 */
+@media (min-width: 1400px) {
+  .admin-header {
+    padding: 0 50px;
+    height: 90px;
+  }
+  
+  .main-content {
+    padding: 50px;
+  }
+  
+  .section-header h2 {
+    font-size: 32px;
+  }
+  
+  .loans-table table {
+    min-width: 1400px;
+  }
+}
+
+/* 中等屏幕 */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 240px;
+  }
+  
+  .nav-text {
+    font-size: 14px;
+  }
+  
+  .loans-table table {
+    min-width: 1000px;
+  }
+  
+  .loans-table th,
+  .loans-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+}
+
+/* 平板设备 */
+@media (max-width: 992px) {
+  .admin-header {
+    padding: 0 20px;
+    height: 70px;
+  }
+  
+  .admin-header h1 {
+    font-size: 20px;
+  }
+  
+  .dashboard-content {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    padding: 20px 0;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .nav-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 20px;
+    gap: 10px;
+  }
+  
+  .nav-item {
+    margin: 0;
+    min-width: 120px;
+    justify-content: center;
+    transform: none !important;
+  }
+  
+  .nav-item:hover {
+    transform: none !important;
+  }
+  
+  .nav-item.active {
+    transform: none !important;
+  }
+  
+  .main-content {
+    padding: 30px 20px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px 25px;
+  }
+  
+  .section-header h2 {
+    font-size: 24px;
+  }
+  
+  .add-btn {
+    align-self: stretch;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* 手机设备 */
 @media (max-width: 768px) {
+  .admin-header {
+    padding: 0 15px;
+    height: 60px;
+    flex-wrap: wrap;
+  }
+  
+  .admin-header h1 {
+    font-size: 18px;
+  }
+  
+  .admin-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  
+  .user-info {
+    gap: 10px;
+  }
+  
+  .user-info span {
+    font-size: 13px;
+  }
+  
+  .logout-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  .main-content {
+    padding: 20px 15px;
+  }
+  
+  .section-header {
+    padding: 20px;
+    border-radius: 15px;
+  }
+  
+  .section-header h2 {
+    font-size: 22px;
+  }
+  
+  /* 表格移动端优化 */
+  .loans-table {
+    border-radius: 15px;
+    overflow: visible;
+  }
+  
+  .table-container {
+    overflow: visible;
+  }
+  
+  .loans-table table,
+  .loans-table tbody,
+  .loans-table tr,
+  .loans-table td {
+    display: block;
+  }
+  
+  .loans-table thead {
+    display: none;
+  }
+  
+  .loans-table tr {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 15px;
+    margin-bottom: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+  }
+  
+  .loans-table tr:hover {
+    transform: none;
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.15);
+  }
+  
+  .loans-table td {
+    border: none;
+    padding: 8px 0;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+  
+  .loans-table td:before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #4a5568;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
+    margin-right: 15px;
+  }
+  
+  .loans-table td:last-child {
+    border-bottom: none;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    margin-right: 8px;
+    margin-bottom: 5px;
+  }
+  
+  /* 状态徽章优化 */
+  .loan-status {
+    margin-left: auto;
+  }
+  
+  /* 金额显示优化 */
+  .amount {
+    font-size: 16px;
+    font-weight: 800;
+  }
+  
   .logs-header,
   .log-row {
     grid-template-columns: 1fr;
@@ -4918,6 +5464,60 @@ export default {
   .logs-stats {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+  .admin-header {
+    padding: 0 10px;
+  }
+  
+  .main-content {
+    padding: 15px 10px;
+  }
+  
+  .section-header {
+    padding: 15px;
+  }
+  
+  .loans-table tr {
+    padding: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .loans-table td:before {
+    min-width: 70px;
+    font-size: 11px;
+  }
+  
+  .action-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 6px 8px;
+  }
+}
+
+/* 文字溢出处理 */
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.text-break {
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: normal;
+}
+
+/* 无障碍优化 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 </style> 
