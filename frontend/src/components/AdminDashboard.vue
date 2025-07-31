@@ -129,7 +129,7 @@
         <div v-if="activeTab === 'users'" class="users-section">
           <div class="section-header">
             <h2>用户管理</h2>
-            <button class="add-btn">添加用户</button>
+            <button @click="showAddUserModal = true" class="add-btn">添加用户</button>
           </div>
           
           <div v-if="users.length > 0" class="users-table">
@@ -138,26 +138,21 @@
                 <tr>
                   <th>ID</th>
                   <th>用户名</th>
-                  <th>邮箱</th>
-                  <th>状态</th>
+                  <th>角色</th>
                   <th>注册时间</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="user in users" :key="user.id">
-                  <td>{{ user.id }}</td>
+                  <td>{{ user._id }}</td>
                   <td>{{ user.username }}</td>
-                  <td>{{ user.email }}</td>
+                  <td>{{ user.role === 'admin' ? '管理员' : '普通用户' }}</td>
+                  <td>{{ formatDate(user.created_at) }}</td>
                   <td>
-                    <span :class="['status', user.status]">
-                      {{ user.status === 'active' ? '活跃' : '禁用' }}
-                    </span>
-                  </td>
-                  <td>{{ user.createdAt }}</td>
-                  <td>
-                    <button class="action-btn edit">编辑</button>
-                    <button class="action-btn delete">删除</button>
+                    <button @click="editUser(user)" class="action-btn edit">编辑</button>
+                    <button @click="viewUser(user)" class="action-btn view">查看</button>
+                    <button @click="deleteUser(user)" class="action-btn delete">删除</button>
                   </td>
                 </tr>
               </tbody>
@@ -173,20 +168,103 @@
 
         <!-- 系统日志 -->
         <div v-if="activeTab === 'logs'" class="logs-section">
-          <h2>系统日志</h2>
-          
-          <div v-if="logs.length > 0" class="logs-container">
-            <div v-for="log in logs" :key="log.id" :class="['log-item', log.type]">
-              <span class="log-time">{{ log.time }}</span>
-              <span class="log-type">{{ log.type.toUpperCase() }}</span>
-              <span class="log-message">{{ log.message }}</span>
+          <div class="section-header">
+            <h2>系统日志</h2>
+            <div class="logs-controls">
+              <button @click="refreshLogs" class="refresh-btn" :disabled="isLoadingLogs">
+                {{ isLoadingLogs ? '加载中...' : '刷新' }}
+              </button>
+              <button @click="showLogCleanupModal = true" class="cleanup-btn">
+                清理日志
+              </button>
             </div>
           </div>
+
+
+
+          <!-- 日志统计 -->
+          <div v-if="logStats" class="logs-stats">
+            <div class="stat-item">
+              <span class="stat-label">总计:</span>
+              <span class="stat-value">{{ logPagination.total || 0 }}</span>
+            </div>
+            <div v-for="stat in logStats.level_stats" :key="stat._id" :class="['stat-item', 'level-' + stat._id]">
+              <span class="stat-label">{{ getLevelText(stat._id) }}:</span>
+              <span class="stat-value">{{ stat.count }}</span>
+            </div>
+          </div>
+
+          <!-- 日志列表 -->
+          <div v-if="logs.length > 0" class="logs-table">
+            <div class="logs-header">
+              <div class="header-cell time">时间</div>
+              <div class="header-cell level">级别</div>
+              <div class="header-cell module">模块</div>
+              <div class="header-cell user">用户</div>
+              <div class="header-cell message">消息</div>
+              <div class="header-cell actions">操作</div>
+            </div>
+            <div class="logs-body">
+              <div 
+                v-for="log in logs" 
+                :key="log._id" 
+                :class="['log-row', 'level-' + log.level]"
+              >
+                <div class="log-cell time">
+                  {{ formatDate(log.created_at) }}
+                </div>
+                <div class="log-cell level">
+                  <span :class="['level-badge', log.level]">
+                    {{ getLevelText(log.level) }}
+                  </span>
+                </div>
+                <div class="log-cell module">
+                  <span class="module-badge">{{ getModuleText(log.module) }}</span>
+                </div>
+                <div class="log-cell user">
+                  {{ log.username || '系统' }}
+                </div>
+                <div class="log-cell message">
+                  {{ log.message }}
+                </div>
+                <div class="log-cell actions">
+                  <button @click="viewLogDetail(log)" class="action-btn view">详情</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 分页 -->
+          <div v-if="logPagination.total_pages > 1" class="logs-pagination">
+            <button 
+              @click="changePage(logPagination.current_page - 1)"
+              :disabled="!logPagination.has_prev"
+              class="page-btn prev"
+            >
+              上一页
+            </button>
+            <span class="page-info">
+              第 {{ logPagination.current_page }} 页，共 {{ logPagination.total_pages }} 页
+              ({{ logPagination.total }} 条记录)
+            </span>
+            <button 
+              @click="changePage(logPagination.current_page + 1)"
+              :disabled="!logPagination.has_next"
+              class="page-btn next"
+            >
+              下一页
+            </button>
+          </div>
           
-          <div v-else class="empty-logs-state">
+          <div v-else-if="!isLoadingLogs" class="empty-logs-state">
             <div class="empty-icon">📋</div>
             <h3>暂无系统日志</h3>
-            <p>系统中还没有日志记录，等待后端数据接入...</p>
+            <p>系统中还没有日志记录</p>
+          </div>
+
+          <div v-if="isLoadingLogs" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>加载日志中...</p>
           </div>
         </div>
       </main>
@@ -953,6 +1031,206 @@
       </div>
     </div>
 
+    <!-- 添加用户模态框 -->
+    <div v-if="showAddUserModal" class="modal-overlay" @click="showAddUserModal = false">
+      <div class="modal-content" @click.stop>
+        <h3>添加用户</h3>
+        <form @submit.prevent="addUser">
+          <div class="form-group">
+            <label>用户名 *</label>
+            <input v-model="newUser.username" type="text" required placeholder="请输入用户名" />
+          </div>
+          <div class="form-group">
+            <label>密码 *</label>
+            <input v-model="newUser.password" type="password" required placeholder="请输入密码" />
+          </div>
+          <div class="form-group">
+            <label>角色</label>
+            <select v-model="newUser.role">
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showAddUserModal = false" class="cancel-btn">取消</button>
+            <button type="submit" class="confirm-btn">添加用户</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 编辑用户模态框 -->
+    <div v-if="showEditUserModal" class="modal-overlay" @click="showEditUserModal = false">
+      <div class="modal-content" @click.stop>
+        <h3>编辑用户</h3>
+        <form @submit.prevent="updateUser">
+          <div class="form-group">
+            <label>用户名</label>
+            <input v-model="editingUser.username" type="text" disabled />
+          </div>
+          <div class="form-group">
+            <label>角色</label>
+            <select v-model="editingUser.role">
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" @click="showEditUserModal = false" class="cancel-btn">取消</button>
+            <button type="submit" class="confirm-btn">保存修改</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 查看用户详情模态框 -->
+    <div v-if="showUserDetailModal" class="modal-overlay" @click="showUserDetailModal = false">
+      <div class="modal-content" @click.stop>
+        <h3>用户详情</h3>
+        <div v-if="selectedUser" class="user-detail">
+          <div class="detail-row">
+            <label>用户ID:</label>
+            <span>{{ selectedUser._id }}</span>
+          </div>
+          <div class="detail-row">
+            <label>用户名:</label>
+            <span>{{ selectedUser.username }}</span>
+          </div>
+          <div class="detail-row">
+            <label>角色:</label>
+            <span>{{ selectedUser.role === 'admin' ? '管理员' : '普通用户' }}</span>
+          </div>
+          <div class="detail-row">
+            <label>注册时间:</label>
+            <span>{{ formatDate(selectedUser.created_at) }}</span>
+          </div>
+          <div class="detail-row">
+            <label>最后登录:</label>
+            <span>{{ selectedUser.last_login ? formatDate(selectedUser.last_login) : '从未登录' }}</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button @click="showUserDetailModal = false" class="confirm-btn">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志详情模态框 -->
+    <div v-if="showLogDetailModal" class="modal-overlay" @click="showLogDetailModal = false">
+      <div class="modal-content log-detail-modal" @click.stop>
+        <h3>日志详情</h3>
+        <div v-if="selectedLog" class="log-detail">
+          <div class="detail-section">
+            <h4>基本信息</h4>
+            <div class="detail-row">
+              <label>时间:</label>
+              <span>{{ formatDate(selectedLog.created_at) }}</span>
+            </div>
+            <div class="detail-row">
+              <label>级别:</label>
+              <span :class="['level-badge', selectedLog.level]">{{ getLevelText(selectedLog.level) }}</span>
+            </div>
+            <div class="detail-row">
+              <label>模块:</label>
+              <span class="module-badge">{{ getModuleText(selectedLog.module) }}</span>
+            </div>
+            <div class="detail-row">
+              <label>操作:</label>
+              <span>{{ selectedLog.action }}</span>
+            </div>
+            <div class="detail-row">
+              <label>消息:</label>
+              <span>{{ selectedLog.message }}</span>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>用户信息</h4>
+            <div class="detail-row">
+              <label>用户:</label>
+              <span>{{ selectedLog.username || '系统' }}</span>
+            </div>
+            <div class="detail-row">
+              <label>IP地址:</label>
+              <span>{{ selectedLog.ip_address }}</span>
+            </div>
+            <div class="detail-row">
+              <label>用户代理:</label>
+              <span class="text-small">{{ selectedLog.user_agent || '未知' }}</span>
+            </div>
+          </div>
+
+          <div v-if="selectedLog.request_method" class="detail-section">
+            <h4>请求信息</h4>
+            <div class="detail-row">
+              <label>请求方法:</label>
+              <span :class="['method-badge', selectedLog.request_method?.toLowerCase()]">{{ selectedLog.request_method }}</span>
+            </div>
+            <div class="detail-row">
+              <label>请求URL:</label>
+              <span class="text-small">{{ selectedLog.request_url }}</span>
+            </div>
+            <div class="detail-row">
+              <label>响应状态:</label>
+              <span :class="['status-badge', getStatusClass(selectedLog.response_status)]">{{ selectedLog.response_status }}</span>
+            </div>
+            <div v-if="selectedLog.response_time" class="detail-row">
+              <label>响应时间:</label>
+              <span>{{ selectedLog.response_time }}ms</span>
+            </div>
+          </div>
+
+          <div v-if="selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0" class="detail-section">
+            <h4>元数据</h4>
+            <pre class="metadata-block">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
+          </div>
+
+          <div v-if="selectedLog.error_details || selectedLog.stack_trace" class="detail-section">
+            <h4>错误信息</h4>
+            <div v-if="selectedLog.error_details" class="detail-row">
+              <label>错误详情:</label>
+              <span class="error-text">{{ selectedLog.error_details }}</span>
+            </div>
+            <div v-if="selectedLog.stack_trace" class="detail-row">
+              <label>堆栈跟踪:</label>
+              <pre class="stack-trace">{{ selectedLog.stack_trace }}</pre>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button @click="showLogDetailModal = false" class="confirm-btn">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 清理日志模态框 -->
+    <div v-if="showLogCleanupModal" class="modal-overlay" @click="showLogCleanupModal = false">
+      <div class="modal-content" @click.stop>
+        <h3>清理系统日志</h3>
+        <div class="cleanup-form">
+          <p>清理操作将删除指定天数之前的所有日志记录，此操作不可撤销。</p>
+          <div class="form-group">
+            <label>保留天数:</label>
+            <select v-model="cleanupDays">
+              <option value="7">7天</option>
+              <option value="30">30天</option>
+              <option value="60">60天</option>
+              <option value="90">90天</option>
+            </select>
+          </div>
+          <div class="warning-note">
+            ⚠️ 此操作将删除 {{ cleanupDays }} 天前的所有日志记录
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button @click="showLogCleanupModal = false" class="cancel-btn">取消</button>
+          <button @click="cleanupLogs" class="danger-btn" :disabled="isCleaningLogs">
+            {{ isCleaningLogs ? '清理中...' : '确认清理' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 自定义确认对话框 -->
     <div v-if="showConfirmDialog" class="modal-overlay">
       <div class="confirm-dialog" @click.stop>
@@ -974,7 +1252,7 @@
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
-import { loanService, userService, loanCalculatorService, repaymentService } from '../services/index.js'
+import { loanService, userService, logService, loanCalculatorService, repaymentService } from '../services/index.js'
 import PrecisionMath from '../utils/precisionMath.js'
 
 export default {
@@ -992,6 +1270,11 @@ export default {
     const showModifyScheduleModal = ref(false)
     const showBatchModifyModal = ref(false)
     const showBatchPaymentModal = ref(false)
+    const showAddUserModal = ref(false)
+    const showEditUserModal = ref(false)
+    const showUserDetailModal = ref(false)
+    const showLogDetailModal = ref(false)
+    const showLogCleanupModal = ref(false)
     const isLoading = ref(false)
     const error = ref(null)
     const activeDetailTab = ref('basic')
@@ -1034,12 +1317,28 @@ export default {
     const loans = ref([])
     const users = ref([])
     const logs = ref([])
+    const selectedUser = ref(null)
+    const selectedLog = ref(null)
     const statistics = ref({
       totalLoans: 0,
       pendingLoans: 0,
       approvedLoans: 0,
       totalUsers: 0
     })
+
+    // 日志相关状态
+    const isLoadingLogs = ref(false)
+    const isCleaningLogs = ref(false)
+    const logStats = ref(null)
+    const logPagination = ref({
+      current_page: 1,
+      per_page: 20,
+      total: 0,
+      total_pages: 0,
+      has_next: false,
+      has_prev: false
+    })
+    const cleanupDays = ref(30)
     
     // 新贷款表单数据
     const newLoan = reactive({
@@ -1064,6 +1363,19 @@ export default {
       term: 0,
       repaymentMethod: '',
       status: 'pending'
+    })
+
+    // 用户表单数据
+    const newUser = reactive({
+      username: '',
+      password: '',
+      role: 'user'
+    })
+
+    const editingUser = reactive({
+      _id: '',
+      username: '',
+      role: 'user'
     })
     
     // 还款表单数据
@@ -1173,7 +1485,7 @@ export default {
         const result = await userService.getUsers()
         
         if (result.success) {
-          users.value = result.data.users || []
+          users.value = result.data.items || result.data.users || []
         } else {
           error.value = result.message
           console.error('获取用户列表失败:', result.message)
@@ -1184,6 +1496,215 @@ export default {
       } finally {
         isLoading.value = false
       }
+    }
+
+    // 添加用户
+    const addUser = async () => {
+      try {
+        const result = await userService.createUser(newUser)
+        
+        if (result.success) {
+          showNotification('用户添加成功', 'success')
+          showAddUserModal.value = false
+          
+          // 重置表单
+          Object.assign(newUser, {
+            username: '',
+            password: '',
+            role: 'user'
+          })
+          
+          // 重新加载用户列表
+          await fetchUsers()
+        } else {
+          showNotification(result.message || '添加用户失败', 'error')
+        }
+      } catch (error) {
+        console.error('添加用户错误:', error)
+        showNotification('添加用户失败，请稍后重试', 'error')
+      }
+    }
+
+    // 编辑用户
+    const editUser = (user) => {
+      Object.assign(editingUser, {
+        _id: user._id,
+        username: user.username,
+        role: user.role
+      })
+      showEditUserModal.value = true
+    }
+
+    // 更新用户
+    const updateUser = async () => {
+      try {
+        const updateData = {
+          role: editingUser.role
+        }
+        
+        const result = await userService.updateUser(editingUser._id, updateData)
+        
+        if (result.success) {
+          showNotification('用户信息更新成功', 'success')
+          showEditUserModal.value = false
+          
+          // 重新加载用户列表
+          await fetchUsers()
+        } else {
+          showNotification(result.message || '更新用户信息失败', 'error')
+        }
+      } catch (error) {
+        console.error('更新用户错误:', error)
+        showNotification('更新用户信息失败，请稍后重试', 'error')
+      }
+    }
+
+    // 查看用户详情
+    const viewUser = (user) => {
+      selectedUser.value = user
+      showUserDetailModal.value = true
+    }
+
+
+
+    // 删除用户
+    const deleteUser = (user) => {
+      showConfirm(
+        '确认删除用户',
+        `确定要删除用户 "${user.username}" 吗？此操作不可撤销。`,
+        async () => {
+          try {
+            const result = await userService.deleteUser(user._id)
+            
+            if (result.success) {
+              showNotification('用户删除成功', 'success')
+              // 重新加载用户列表
+              await fetchUsers()
+            } else {
+              showNotification(result.message || '删除用户失败', 'error')
+            }
+          } catch (error) {
+            console.error('删除用户错误:', error)
+            showNotification('删除用户失败，请稍后重试', 'error')
+          }
+        }
+      )
+    }
+
+    // 获取系统日志
+    const fetchLogs = async (page = 1) => {
+      isLoadingLogs.value = true
+      
+      try {
+        const params = {
+          page: typeof page === 'number' ? page : 1,
+          per_page: logPagination.value.per_page
+        }
+
+        const result = await logService.getLogs(params)
+        
+        if (result.success) {
+          logs.value = result.data.items || []
+          logPagination.value = result.data.pagination
+          
+          // 获取统计信息
+          await fetchLogStatistics()
+        } else {
+          showNotification(result.message || '获取日志失败', 'error')
+        }
+      } catch (error) {
+        console.error('获取日志错误:', error)
+        showNotification('获取日志失败，请稍后重试', 'error')
+      } finally {
+        isLoadingLogs.value = false
+      }
+    }
+
+    // 获取日志统计
+    const fetchLogStatistics = async () => {
+      try {
+        const result = await logService.getLogStatistics(7)
+        
+        if (result.success) {
+          logStats.value = result.data
+        }
+      } catch (error) {
+        console.error('获取日志统计错误:', error)
+      }
+    }
+
+    // 刷新日志
+    const refreshLogs = () => {
+      fetchLogs(logPagination.value.current_page)
+    }
+
+    // 改变页面
+    const changePage = (page) => {
+      if (page >= 1 && page <= logPagination.value.total_pages) {
+        fetchLogs(page)
+      }
+    }
+
+    // 查看日志详情
+    const viewLogDetail = (log) => {
+      selectedLog.value = log
+      showLogDetailModal.value = true
+    }
+
+    // 清理日志
+    const cleanupLogs = async () => {
+      isCleaningLogs.value = true
+      
+      try {
+        const result = await logService.cleanupLogs(cleanupDays.value)
+        
+        if (result.success) {
+          showNotification(`成功清理 ${result.data.deleted_count} 条日志`, 'success')
+          showLogCleanupModal.value = false
+          
+          // 重新加载日志
+          await fetchLogs(1)
+        } else {
+          showNotification(result.message || '清理日志失败', 'error')
+        }
+      } catch (error) {
+        console.error('清理日志错误:', error)
+        showNotification('清理日志失败，请稍后重试', 'error')
+      } finally {
+        isCleaningLogs.value = false
+      }
+    }
+
+    // 获取级别文本
+    const getLevelText = (level) => {
+      const levelMap = {
+        debug: '调试',
+        info: '信息',
+        warning: '警告',
+        error: '错误'
+      }
+      return levelMap[level] || level
+    }
+
+    // 获取模块文本
+    const getModuleText = (module) => {
+      const moduleMap = {
+        auth: '认证',
+        user: '用户',
+        loan: '贷款',
+        system: '系统',
+        upload: '上传'
+      }
+      return moduleMap[module] || module
+    }
+
+    // 获取状态码样式类
+    const getStatusClass = (status) => {
+      if (status >= 200 && status < 300) return 'success'
+      if (status >= 300 && status < 400) return 'redirect'
+      if (status >= 400 && status < 500) return 'client-error'
+      if (status >= 500) return 'server-error'
+      return 'unknown'
     }
     
     // 获取统计信息
@@ -2174,7 +2695,8 @@ export default {
       // 获取初始数据（暂时不获取统计信息）
       await Promise.all([
         fetchLoans(),
-        fetchUsers()
+        fetchUsers(),
+        fetchLogs()
       ])
     })
     
@@ -2238,15 +2760,29 @@ export default {
       showModifyScheduleModal,
       showBatchModifyModal,
       showBatchPaymentModal,
+      showAddUserModal,
+      showEditUserModal,
+      showUserDetailModal,
+      showLogDetailModal,
+      showLogCleanupModal,
       isLoading,
       error,
       loans,
-      users,
+      users,  
       logs,
+      selectedUser,
+      selectedLog,
       statistics,
+      isLoadingLogs,
+      isCleaningLogs,
+      logStats,
+      logPagination,
+      cleanupDays,
       newLoan,
       selectedLoan,
       editingLoan,
+      newUser,
+      editingUser,
       paymentForm,
       batchPaymentForm,
       modifyScheduleForm,
@@ -2301,6 +2837,19 @@ export default {
       logout,
       fetchLoans,
       fetchUsers,
+      addUser,
+      editUser,
+      updateUser,
+      viewUser,
+      deleteUser,
+      fetchLogs,
+      refreshLogs,
+      changePage,
+      viewLogDetail,
+      cleanupLogs,
+      getLevelText,
+      getModuleText,
+      getStatusClass,
       updateLoan,
       
       // 通知系统
@@ -2703,15 +3252,7 @@ export default {
   font-weight: 600;
 }
 
-.status.active {
-  background: #d4edda;
-  color: #155724;
-}
 
-.status.inactive {
-  background: #f8d7da;
-  color: #721c24;
-}
 
 .action-btn {
   padding: 6px 12px;
@@ -3846,6 +4387,537 @@ export default {
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+/* 用户管理相关样式 */
+.users-section {
+  padding: 20px;
+}
+
+.users-table {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.users-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th {
+  background: #f8f9fa;
+  padding: 15px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.users-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+}
+
+.users-table tr:hover {
+  background: #f8f9fa;
+}
+
+
+
+.action-btn {
+  padding: 6px 12px;
+  margin: 0 2px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn.edit {
+  background: #007bff;
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background: #0056b3;
+}
+
+.action-btn.view {
+  background: #6c757d;
+  color: white;
+}
+
+.action-btn.view:hover {
+  background: #545b62;
+}
+
+
+
+.action-btn.delete {
+  background: #dc3545;
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background: #c82333;
+}
+
+.empty-users-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-users-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  opacity: 0.7;
+}
+
+.empty-users-state h3 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.empty-users-state p {
+  margin: 0;
+  color: #6c757d;
+}
+
+.user-detail {
+  max-width: 500px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row label {
+  min-width: 100px;
+  font-weight: 600;
+  color: #495057;
+  margin-right: 15px;
+}
+
+.detail-row span {
+  color: #6c757d;
+  word-break: break-all;
+}
+
+.detail-row .user-status {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .users-table {
+    overflow-x: auto;
+  }
+  
+  .users-table table {
+    min-width: 800px;
+  }
+  
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    margin: 1px;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .detail-row label {
+    min-width: auto;
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+}
+
+/* 系统日志样式 */
+.logs-section {
+  padding: 20px;
+}
+
+.logs-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.refresh-btn, .cleanup-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.refresh-btn {
+  background: #007bff;
+  color: white;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.refresh-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.cleanup-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.cleanup-btn:hover {
+  background: #c82333;
+}
+
+
+
+.logs-stats {
+  display: flex;
+  gap: 15px;
+  margin: 15px 0;
+  padding: 10px;
+  background: #e9ecef;
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.stat-item.level-error .stat-value {
+  color: #dc3545;
+}
+
+.stat-item.level-warning .stat-value {
+  color: #ffc107;
+}
+
+.stat-item.level-info .stat-value {
+  color: #17a2b8;
+}
+
+.stat-item.level-debug .stat-value {
+  color: #6c757d;
+}
+
+.logs-table {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.logs-header {
+  display: grid;
+  grid-template-columns: 180px 80px 80px 120px 1fr 80px;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.header-cell {
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 12px;
+  border-right: 1px solid #dee2e6;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.logs-body {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 180px 80px 80px 120px 1fr 80px;
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s;
+}
+
+.log-row:hover {
+  background: #f8f9fa;
+}
+
+.log-row.level-error {
+  border-left: 4px solid #dc3545;
+}
+
+.log-row.level-warning {
+  border-left: 4px solid #ffc107;
+}
+
+.log-row.level-info {
+  border-left: 4px solid #17a2b8;
+}
+
+.log-row.level-debug {
+  border-left: 4px solid #6c757d;
+}
+
+.log-cell {
+  padding: 8px;
+  font-size: 12px;
+  color: #495057;
+  border-right: 1px solid #e9ecef;
+  word-break: break-word;
+  display: flex;
+  align-items: center;
+}
+
+.log-cell:last-child {
+  border-right: none;
+}
+
+.log-cell.time {
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.log-cell.message {
+  line-height: 1.3;
+}
+
+.level-badge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.level-badge.debug {
+  background: #6c757d;
+  color: white;
+}
+
+.level-badge.info {
+  background: #17a2b8;
+  color: white;
+}
+
+.level-badge.warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.level-badge.error {
+  background: #dc3545;
+  color: white;
+}
+
+.module-badge {
+  padding: 2px 6px;
+  background: #e9ecef;
+  border-radius: 10px;
+  font-size: 10px;
+  color: #495057;
+}
+
+.method-badge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.method-badge.get { background: #28a745; color: white; }
+.method-badge.post { background: #007bff; color: white; }
+.method-badge.put { background: #ffc107; color: #212529; }
+.method-badge.patch { background: #17a2b8; color: white; }
+.method-badge.delete { background: #dc3545; color: white; }
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.status-badge.success { background: #28a745; color: white; }
+.status-badge.redirect { background: #17a2b8; color: white; }
+.status-badge.client-error { background: #ffc107; color: #212529; }
+.status-badge.server-error { background: #dc3545; color: white; }
+.status-badge.unknown { background: #6c757d; color: white; }
+
+.logs-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 15px;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  border: 1px solid #ced4da;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.page-btn:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e9ecef;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.log-detail-modal {
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.detail-section h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 14px;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 5px;
+}
+
+.metadata-block,
+.stack-trace {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #495057;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.text-small {
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.error-text {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.cleanup-form {
+  padding: 10px 0;
+}
+
+.warning-note {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .logs-header,
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .header-cell,
+  .log-cell {
+    border-right: none;
+    border-bottom: 1px solid #e9ecef;
+    padding: 6px 8px;
+  }
+  
+  .log-cell:before {
+    content: attr(data-label) ': ';
+    font-weight: 600;
+    margin-right: 5px;
+  }
+  
+  .logs-stats {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 </style> 

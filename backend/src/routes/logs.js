@@ -57,7 +57,7 @@ router.get('/', authenticate, authorize('admin'), validate(logQuerySchema, 'quer
     
     // 查询日志列表
     const logs = await SystemLog.find(filter)
-      .populate('user_id', 'username real_name email')
+      .populate('user_id', 'username role')
       .sort(sortObj)
       .skip(skip)
       .limit(per_page);
@@ -71,30 +71,6 @@ router.get('/', authenticate, authorize('admin'), validate(logQuerySchema, 'quer
       success: true,
       message: '获取系统日志成功',
       data: responseData,
-      code: 200,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 获取单个日志详情 (仅管理员)
-router.get('/:log_id', authenticate, authorize('admin'), async (req, res, next) => {
-  try {
-    const { log_id } = req.params;
-    
-    const log = await SystemLog.findById(log_id)
-      .populate('user_id', 'username real_name email');
-    
-    if (!log) {
-      return next(new AppError('日志不存在', 404, 4040));
-    }
-    
-    res.json({
-      success: true,
-      message: '获取日志详情成功',
-      data: { log },
       code: 200,
       timestamp: new Date().toISOString()
     });
@@ -198,6 +174,30 @@ router.post('/cleanup', authenticate, authorize('admin'), async (req, res, next)
         deleted_count: result.deletedCount,
         days_kept: days_to_keep
       },
+      code: 200,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 获取单个日志详情 (仅管理员)
+router.get('/:log_id', authenticate, authorize('admin'), async (req, res, next) => {
+  try {
+    const { log_id } = req.params;
+    
+    const log = await SystemLog.findById(log_id)
+      .populate('user_id', 'username role');
+    
+    if (!log) {
+      return next(new AppError('日志不存在', 404, 4040));
+    }
+    
+    res.json({
+      success: true,
+      message: '获取日志详情成功',
+      data: { log },
       code: 200,
       timestamp: new Date().toISOString()
     });
