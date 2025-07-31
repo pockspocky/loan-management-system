@@ -545,6 +545,9 @@
                 <button @click="loadRepaymentSchedule" class="calc-btn" :disabled="isLoadingRepayment">
                   {{ isLoadingRepayment ? '加载中...' : '获取还款计划' }}
                 </button>
+                <button v-if="repaymentSchedule.length > 0" @click="showBatchPaymentModal = true" class="calc-btn batch-payment-btn">
+                  批量还款
+                </button>
               </div>
 
               <!-- 还款统计 -->
@@ -663,13 +666,162 @@
         </form>
       </div>
     </div>
+
+    <!-- 批量还款模态框 -->
+    <div v-if="showBatchPaymentModal" class="modal-overlay" @click="showBatchPaymentModal = false">
+      <div class="modal-content batch-payment-modal" @click.stop>
+        <h3>批量还款</h3>
+        
+        <div class="batch-payment-steps">
+          <p class="steps-hint">
+            <strong>操作步骤：</strong>
+            ① 输入还款金额 → ② 选择支付方式 → ③ 点击"计算分配" → ④ 确认还款
+          </p>
+        </div>
+        
+        <div class="batch-payment-form">
+          <div class="form-group">
+            <label>还款总金额</label>
+            <input 
+              v-model.number="batchPaymentForm.total_amount" 
+              type="number" 
+              step="0.01"
+              min="0"
+              placeholder="请输入要还款的总金额"
+              required 
+            />
+          </div>
+          
+          <div class="form-group">
+            <label>支付方式</label>
+            <select v-model="batchPaymentForm.payment_method" required>
+              <option value="">请选择支付方式</option>
+              <option value="bank_transfer">银行转账</option>
+              <option value="cash">现金</option>
+              <option value="online_payment">在线支付</option>
+              <option value="check">支票</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>交易号</label>
+            <input v-model="batchPaymentForm.transaction_id" type="text" placeholder="可选" />
+          </div>
+          
+          <div class="form-group">
+            <label>还款日期</label>
+            <input v-model="batchPaymentForm.paid_date" type="date" />
+          </div>
+          
+          <div class="form-group">
+            <label>备注</label>
+            <textarea v-model="batchPaymentForm.notes" rows="3" placeholder="批量还款备注..."></textarea>
+          </div>
+          
+          <!-- 状态提示 -->
+          <div class="form-status-hints">
+            <div v-if="!selectedLoan || !selectedLoan.id" class="status-warning">
+              ⚠️ 请先选择一个贷款并获取还款计划
+            </div>
+            <div v-else-if="!repaymentSchedule || repaymentSchedule.length === 0" class="status-warning">
+              ⚠️ 请先点击"获取还款计划"按钮
+            </div>
+            <div v-else-if="!batchPaymentForm.total_amount" class="status-info">
+              💡 请输入还款总金额
+            </div>
+            <div v-else-if="!batchPaymentForm.payment_method" class="status-info">
+              💡 请选择支付方式
+            </div>
+            <div v-else-if="batchPaymentPreview.length === 0" class="status-info">
+              💡 请点击"计算分配"生成还款预览
+            </div>
+            <div v-else class="status-success">
+              ✅ 准备就绪，可以执行批量还款
+            </div>
+          </div>
+          
+          <!-- 还款分配预览 -->
+          <div v-if="batchPaymentPreview.length > 0" class="payment-preview">
+            <h4>还款分配预览</h4>
+            <div class="preview-summary">
+              <p><strong>总金额:</strong> ￥{{ batchPaymentForm.total_amount?.toLocaleString() }}</p>
+              <p><strong>可分配期数:</strong> {{ batchPaymentPreview.length }}期</p>
+              <p><strong>剩余金额:</strong> ￥{{ batchPaymentRemaining?.toLocaleString() }}</p>
+            </div>
+            
+            <div class="preview-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>期数</th>
+                    <th>应还总额</th>
+                    <th>已还金额</th>
+                    <th>剩余应还</th>
+                    <th>本次还款</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in batchPaymentPreview.slice(0, 10)" :key="item.period_number">
+                    <td>第{{ item.period_number }}期</td>
+                    <td>￥{{ item.total_amount?.toLocaleString() }}</td>
+                    <td>￥{{ (item.already_paid || 0).toLocaleString() }}</td>
+                    <td>￥{{ (item.remaining_due_before || 0).toLocaleString() }}</td>
+                    <td>￥{{ item.payment_amount?.toLocaleString() }}</td>
+                    <td>
+                      <span :class="['preview-status', item.payment_status]">
+                        {{ item.payment_status === 'full' ? '还清剩余' : item.payment_status === 'partial' ? '部分还款' : '未还' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="batchPaymentPreview.length > 10" class="preview-more">
+                还有 {{ batchPaymentPreview.length - 10 }} 期未显示...
+              </div>
+            </div>
+          </div>
+          
+          <!-- 批量还款进度条 -->
+          <div v-if="isBatchPaymentProcessing" class="batch-payment-progress">
+            <h4>批量还款进度</h4>
+            <div class="progress-info">
+              <span>正在处理第 {{ batchPaymentCurrentPeriod }} / {{ batchPaymentTotalPeriods }} 期</span>
+              <span class="progress-percentage">{{ batchPaymentProgress }}%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" :style="{ width: batchPaymentProgress + '%' }"></div>
+            </div>
+            <div class="progress-status">
+              <small>请勿关闭窗口，正在处理批量还款...</small>
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="showBatchPaymentModal = false" class="cancel-btn">取消</button>
+            <button type="button" @click="calculateBatchPayment" class="calc-btn" :disabled="!batchPaymentForm.total_amount">
+              {{ !batchPaymentForm.total_amount ? '请先输入金额' : '计算分配' }}
+            </button>
+            <button 
+              type="button" 
+              @click="executeBatchPayment" 
+              class="confirm-btn" 
+              :disabled="isBatchPaymentProcessing || batchPaymentPreview.length === 0"
+            >
+              {{ isBatchPaymentProcessing ? '处理中...' : (batchPaymentPreview.length === 0 ? '请先计算分配' : '确认批量还款') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import { loanCalculatorService, repaymentService } from '../services/index.js'
-import { showAlert, showSuccess, showError, showWarning } from '../utils/dialogService.js'
+import { showAlert, showSuccess, showError, showWarning, showConfirm } from '../utils/dialogService.js'
+import PrecisionMath from '../utils/precisionMath.js'
 
 export default {
   name: 'UserDashboard',
@@ -692,6 +844,22 @@ export default {
     const isLoadingRepayment = ref(false)
     const repaymentSchedule = ref([])
     const repaymentStats = ref(null)
+    
+    // 批量还款相关状态
+    const showBatchPaymentModal = ref(false)
+    const isBatchPaymentProcessing = ref(false)
+    const batchPaymentPreview = ref([])
+    const batchPaymentRemaining = ref(0)
+    const batchPaymentProgress = ref(0)
+    const batchPaymentCurrentPeriod = ref(0)
+    const batchPaymentTotalPeriods = ref(0)
+    const batchPaymentForm = reactive({
+      total_amount: 0,
+      payment_method: '',
+      transaction_id: '',
+      paid_date: new Date().toISOString().split('T')[0],
+      notes: ''
+    })
     
     // 加载和错误状态
     const isLoading = ref(false)
@@ -1169,6 +1337,256 @@ export default {
       return repaymentService.getPaymentStatusText(status)
     }
     
+    // 计算批量还款分配
+    const calculateBatchPayment = () => {
+      console.log('🔢 calculateBatchPayment 被触发')
+      console.log('输入金额:', batchPaymentForm.total_amount)
+      console.log('还款计划数据:', repaymentSchedule.value)
+      
+      if (!PrecisionMath.isValidNumber(batchPaymentForm.total_amount)) {
+        console.error('❌ 金额无效')
+        showWarning('请输入有效的还款金额', { title: '输入错误' })
+        return
+      }
+      
+      const totalAmount = PrecisionMath.safeDecimal(batchPaymentForm.total_amount)
+      if (PrecisionMath.lessThanOrEqual(totalAmount, 0)) {
+        showWarning('请输入有效的还款金额', { title: '输入错误' })
+        return
+      }
+      
+      if (!repaymentSchedule.value || repaymentSchedule.value.length === 0) {
+        showWarning('请先获取还款计划', { title: '数据缺失' })
+        return
+      }
+      
+      // 获取所有未还清的期数，按期数排序
+      const unpaidSchedules = repaymentSchedule.value
+        .filter(schedule => schedule.status !== 'paid')
+        .sort((a, b) => a.period_number - b.period_number)
+      
+      if (unpaidSchedules.length === 0) {
+        showAlert('所有期数都已还清', { title: '提示' })
+        return
+      }
+      
+      let remainingAmount = totalAmount
+      const preview = []
+      
+      console.log('开始批量还款计算:')
+      console.log('总金额:', PrecisionMath.toString(totalAmount))
+      console.log('未还清期数:', unpaidSchedules.length)
+      
+      // 逐期分配还款金额
+      for (const schedule of unpaidSchedules) {
+        if (PrecisionMath.lessThanOrEqual(remainingAmount, 0)) break
+        
+        // 计算这一期的剩余应还金额（考虑已还部分）
+        const totalDue = PrecisionMath.safeDecimal(schedule.total_amount || 0)
+        const alreadyPaid = PrecisionMath.safeDecimal(schedule.paid_amount || 0)
+        const remainingDue = PrecisionMath.subtract(totalDue, alreadyPaid)
+        
+        console.log(`第${schedule.period_number}期: 应还=${PrecisionMath.toString(totalDue)}, 已还=${PrecisionMath.toString(alreadyPaid)}, 剩余=${PrecisionMath.toString(remainingDue)}`)
+        
+        // 如果这一期已经还清，跳过
+        if (PrecisionMath.lessThanOrEqual(remainingDue, 0)) {
+          console.log(`第${schedule.period_number}期已还清，跳过`)
+          continue
+        }
+        
+        let paymentAmount = PrecisionMath.decimal(0)
+        let paymentStatus = 'none'
+        
+        if (PrecisionMath.greaterThanOrEqual(remainingAmount, remainingDue)) {
+          // 可以还清这一期的剩余金额
+          paymentAmount = remainingDue
+          paymentStatus = 'full'
+          remainingAmount = PrecisionMath.subtract(remainingAmount, remainingDue)
+          console.log(`第${schedule.period_number}期: 全额还清剩余金额 ${PrecisionMath.toString(remainingDue)}`)
+        } else {
+          // 只能部分还款
+          paymentAmount = remainingAmount
+          paymentStatus = 'partial'
+          remainingAmount = PrecisionMath.decimal(0)
+          console.log(`第${schedule.period_number}期: 部分还款 ${PrecisionMath.toString(paymentAmount)}`)
+        }
+        
+        preview.push({
+          period_number: schedule.period_number,
+          due_date: schedule.due_date,
+          total_amount: PrecisionMath.toNumber(totalDue),
+          already_paid: PrecisionMath.toNumber(alreadyPaid),
+          remaining_due_before: PrecisionMath.toNumber(remainingDue),
+          payment_amount: PrecisionMath.toNumber(paymentAmount),
+          payment_status: paymentStatus,
+          remaining_due_after: PrecisionMath.toNumber(PrecisionMath.subtract(remainingDue, paymentAmount))
+        })
+      }
+      
+      batchPaymentPreview.value = preview
+      batchPaymentRemaining.value = PrecisionMath.toNumber(remainingAmount)
+      
+      console.log('✅ 批量还款分配计算完成')
+      console.log('预览数据长度:', preview.length)
+      console.log('预览数据:', preview)
+      console.log('剩余金额:', PrecisionMath.toNumber(remainingAmount))
+      
+      showSuccess(`计算完成，可分配${preview.length}期还款`, { title: '计算成功', duration: 3000 })
+      
+      console.log('批量还款分配预览:', preview)
+      console.log('剩余金额:', PrecisionMath.toString(remainingAmount))
+    }
+    
+    // 执行批量还款
+    const executeBatchPayment = async () => {
+      console.log('🚀 executeBatchPayment 被触发')
+      console.log('selectedLoan:', selectedLoan.value)
+      console.log('batchPaymentPreview.length:', batchPaymentPreview.value.length)
+      console.log('batchPaymentForm:', batchPaymentForm)
+      
+      if (!selectedLoan.value || !selectedLoan.value.id) {
+        console.error('❌ 贷款信息无效')
+        showError('贷款信息无效', { title: '数据错误' })
+        return
+      }
+      
+      if (batchPaymentPreview.value.length === 0) {
+        showWarning('请先计算还款分配', { title: '操作提示' })
+        return
+      }
+      
+      if (!batchPaymentForm.payment_method) {
+        showWarning('请选择支付方式', { title: '输入错误' })
+        return
+      }
+      
+      // 确认批量还款
+      console.log('💬 准备显示确认对话框')
+      const confirmMessage = `确定要执行批量还款吗？\n总金额: ￥${batchPaymentForm.total_amount?.toLocaleString()}\n分配期数: ${batchPaymentPreview.value.length}期`
+      
+      try {
+        const confirmed = await showConfirm(confirmMessage, { 
+          title: '确认批量还款',
+          confirmText: '确认还款',
+          cancelText: '取消'
+        })
+        
+        console.log('💬 用户确认结果:', confirmed)
+        
+        if (confirmed) {
+          console.log('✅ 用户确认还款，开始处理...')
+          await processBatchPayment()
+        } else {
+          console.log('❌ 用户取消还款')
+        }
+      } catch (error) {
+        console.error('❌ 确认对话框出错:', error)
+        showError('确认对话框出错，请刷新页面重试', { title: '系统错误' })
+      }
+    }
+    
+    // 处理批量还款
+    const processBatchPayment = async () => {
+      isBatchPaymentProcessing.value = true
+      
+      // 初始化进度
+      const validPayments = batchPaymentPreview.value.filter(p => p.payment_amount > 0)
+      batchPaymentTotalPeriods.value = validPayments.length
+      batchPaymentCurrentPeriod.value = 0
+      batchPaymentProgress.value = 0
+      
+      try {
+        let successCount = 0
+        let failureCount = 0
+        const errors = []
+        
+        showAlert('开始处理批量还款...', { title: '处理中', duration: 2000 })
+        
+        // 依次处理每期还款
+        for (let index = 0; index < validPayments.length; index++) {
+          const payment = validPayments[index]
+          
+          // 更新进度
+          batchPaymentCurrentPeriod.value = index + 1
+          batchPaymentProgress.value = Math.round(((index + 1) / validPayments.length) * 100)
+          
+          try {
+            // 构造还款数据
+            const paymentData = {
+              paid_amount: payment.payment_amount,
+              payment_method: batchPaymentForm.payment_method,
+              transaction_id: batchPaymentForm.transaction_id ? 
+                `${batchPaymentForm.transaction_id}-P${payment.period_number}` : 
+                `BATCH-${Date.now()}-P${payment.period_number}`,
+              paid_date: batchPaymentForm.paid_date,
+              notes: `${batchPaymentForm.notes || '批量还款'} - 第${payment.period_number}期 ${payment.payment_status === 'full' ? '全额' : '部分'}还款`
+            }
+            
+            console.log(`处理第${payment.period_number}期还款 (${index + 1}/${validPayments.length}):`, paymentData)
+            
+            // 调用API记录还款
+            const result = await repaymentService.recordPayment(
+              selectedLoan.value.id,
+              payment.period_number,
+              paymentData
+            )
+            
+            if (result.success) {
+              successCount++
+              console.log(`第${payment.period_number}期还款成功`)
+            } else {
+              failureCount++
+              errors.push(`第${payment.period_number}期: ${result.message}`)
+              console.error(`第${payment.period_number}期还款失败:`, result.message)
+            }
+            
+            // 添加小延迟避免请求过快，同时让进度条有更好的视觉效果
+            await new Promise(resolve => setTimeout(resolve, 200))
+            
+          } catch (error) {
+            failureCount++
+            errors.push(`第${payment.period_number}期: ${error.message || '网络错误'}`)
+            console.error(`第${payment.period_number}期还款异常:`, error)
+          }
+        }
+        
+        // 显示批量还款结果
+        if (successCount > 0 && failureCount === 0) {
+          showSuccess(`批量还款完成！成功处理${successCount}期`, { title: '还款成功', duration: 5000 })
+        } else if (successCount > 0 && failureCount > 0) {
+          showWarning(`批量还款部分完成：成功${successCount}期，失败${failureCount}期`, { title: '部分成功', duration: 8000 })
+          console.warn('批量还款错误详情:', errors)
+        } else {
+          showError(`批量还款失败：${failureCount}期处理失败`, { title: '还款失败', duration: 5000 })
+          console.error('批量还款错误详情:', errors)
+        }
+        
+        // 重置表单和预览
+        batchPaymentForm.total_amount = 0
+        batchPaymentForm.transaction_id = ''
+        batchPaymentForm.notes = ''
+        batchPaymentPreview.value = []
+        batchPaymentRemaining.value = 0
+        
+        // 重置进度
+        batchPaymentProgress.value = 0
+        batchPaymentCurrentPeriod.value = 0
+        batchPaymentTotalPeriods.value = 0
+        
+        // 关闭模态框
+        showBatchPaymentModal.value = false
+        
+        // 重新加载还款计划
+        await loadRepaymentSchedule()
+        
+      } catch (error) {
+        console.error('批量还款处理异常:', error)
+        showError('批量还款处理失败，请稍后重试', { title: '系统错误' })
+      } finally {
+        isBatchPaymentProcessing.value = false
+      }
+    }
+    
     const logout = () => {
       emit('logout')
     }
@@ -1211,6 +1629,14 @@ export default {
       isLoadingRepayment,
       repaymentSchedule,
       repaymentStats,
+      showBatchPaymentModal,
+      isBatchPaymentProcessing,
+      batchPaymentPreview,
+      batchPaymentRemaining,
+      batchPaymentProgress,
+      batchPaymentCurrentPeriod,
+      batchPaymentTotalPeriods,
+      batchPaymentForm,
       isLoading,
       error,
       currentUser,
@@ -1223,6 +1649,8 @@ export default {
       updateLoan,
       calculateLoan,
       loadRepaymentSchedule,
+      calculateBatchPayment,
+      executeBatchPayment,
       fetchLoans,
       formatDate,
       getPaymentStatusText,
@@ -2404,5 +2832,267 @@ export default {
 .payment-status.partial {
   background: #d1ecf1;
   color: #0c5460;
+}
+
+/* 批量还款相关样式 */
+.batch-payment-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-left: 10px;
+}
+
+.batch-payment-steps {
+  background: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.steps-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #0066cc;
+  line-height: 1.4;
+}
+
+.steps-hint strong {
+  color: #004499;
+}
+
+.form-status-hints {
+  margin: 15px 0;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #b8daff;
+}
+
+.status-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.batch-payment-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.batch-payment-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.batch-payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.payment-preview {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.payment-preview h4 {
+  margin-top: 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.preview-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.preview-summary p {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.preview-summary strong {
+  color: #495057;
+  font-weight: 600;
+}
+
+.preview-table {
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+}
+
+.preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.preview-table th {
+  background: #f8f9fa;
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.preview-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 13px;
+}
+
+.preview-table tr:hover {
+  background: #f8f9fa;
+}
+
+.preview-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-status.full {
+  background: #d4edda;
+  color: #155724;
+}
+
+.preview-status.partial {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.preview-status.none {
+  background: #e2e3e5;
+  color: #6c757d;
+}
+
+.preview-more {
+  padding: 15px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.batch-payment-progress {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+}
+
+.batch-payment-progress h4 {
+  margin-top: 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #495057;
+}
+
+.progress-percentage {
+  font-weight: 600;
+  color: #007bff;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-status {
+  text-align: center;
+}
+
+.progress-status small {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.repayment-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.repayment-controls .calc-btn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .batch-payment-modal {
+    max-width: 95vw;
+    margin: 20px auto;
+  }
+  
+  .preview-summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .preview-table {
+    overflow-x: auto;
+  }
+  
+  .preview-table table {
+    min-width: 600px;
+  }
+  
+  .repayment-controls {
+    flex-direction: column;
+  }
+  
+  .repayment-controls .calc-btn {
+    width: 100%;
+  }
 }
 </style> 
