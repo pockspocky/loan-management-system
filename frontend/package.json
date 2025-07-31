@@ -17,5 +17,8 @@
     "@vitejs/plugin-vue": "^4.5.0",
     "terser": "^5.40.0",
     "vite": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.27.3"
   }
 }

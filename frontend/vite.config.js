@@ -23,7 +23,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'https://zlyoszudwbcc.sealoshzh.site',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
         secure: true,
         configure: (proxy, options) => {
