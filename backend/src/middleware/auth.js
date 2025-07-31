@@ -56,10 +56,7 @@ const authenticate = async (req, res, next) => {
       return next(new AppError('用户不存在', 401, 1001));
     }
 
-    // 检查用户状态
-    if (user.status !== 'active') {
-      return next(new AppError('账户已被禁用', 403, 1003));
-    }
+
 
     // 将用户信息添加到请求对象
     req.user = user;
@@ -152,7 +149,7 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
       
-      if (user && user.status === 'active') {
+      if (user) {
         req.user = user;
         req.token = token;
       }
