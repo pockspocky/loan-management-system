@@ -36,57 +36,17 @@
         <button @click="error = null" class="close-error">×</button>
       </div>
 
-      <!-- 侧边栏 -->
-      <aside class="sidebar">
-        <nav class="nav-menu">
-          <div 
-            v-for="item in menuItems" 
-            :key="item.id"
-            @click="activeTab = item.id"
-            :class="['nav-item', { active: activeTab === item.id }]"
-          >
-            <span class="nav-icon">{{ item.icon }}</span>
-            <span class="nav-text">{{ item.text }}</span>
-          </div>
-        </nav>
-      </aside>
-
       <!-- 主内容区 -->
-      <main class="main-content">
+      <main class="main-content full-width">
         <!-- 个人概览 -->
         <div v-if="activeTab === 'overview'" class="overview-section">
           <!-- 欢迎卡片 -->
           <div class="welcome-card">
             <div class="welcome-content">
-              <h2>欢迎回来，{{ userInfo.username }}！</h2>
+              <h2>欢迎回来，{{ currentUser?.username || '用户' }}！</h2>
               <p>今天是美好的一天，继续保持活力吧！</p>
             </div>
             <div class="welcome-image">🌟</div>
-          </div>
-
-          <!-- 统计卡片 -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">📊</div>
-              <div class="stat-info">
-                <h3>{{ userStats.totalTasks }}</h3>
-                <p>总任务数</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">✅</div>
-              <div class="stat-info">
-                <h3>{{ userStats.completedTasks }}</h3>
-                <p>已完成</p>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🎯</div>
-              <div class="stat-info">
-                <h3>{{ userStats.activeProjects }}</h3>
-                <p>活跃项目</p>
-              </div>
-            </div>
           </div>
 
           <!-- 贷款列表 -->
@@ -96,46 +56,63 @@
               <button @click="showAddLoanModal = true" class="add-btn">申请贷款</button>
             </div>
             
-            <div v-if="loans.length > 0" class="loans-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>贷款名称</th>
-                    <th>申请人</th>
-                    <th>贷款金额</th>
-                    <th>年利率</th>
-                    <th>贷款银行</th>
-                    <th>还款期限</th>
-                    <th>还款方式</th>
-                    <th>申请状态</th>
-                    <th>申请时间</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="loan in loans" :key="loan.id">
-                    <td>{{ loan.id }}</td>
-                    <td class="loan-name">{{ loan.loanName }}</td>
-                    <td>{{ loan.applicantName }}</td>
-                    <td class="amount">￥{{ loan.amount.toLocaleString() }}</td>
-                    <td class="rate">{{ loan.interestRate }}%</td>
-                    <td>{{ loan.bank }}</td>
-                    <td class="term">{{ loan.term }}个月</td>
-                    <td class="repayment-method">{{ getRepaymentMethodText(loan.repaymentMethod) }}</td>
-                    <td>
-                      <span :class="['loan-status', loan.status]">
-                        {{ getLoanStatusText(loan.status) }}
-                      </span>
-                    </td>
-                    <td>{{ loan.applicationDate }}</td>
-                    <td>
-                      <button @click="viewLoan(loan)" class="action-btn view">查看</button>
-                      <button @click="editLoan(loan)" class="action-btn edit">编辑</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-if="loans.length > 0" class="loans-scroll-container">
+              <div class="loans-cards">
+                <div v-for="loan in loans" :key="loan.id" class="loan-card">
+                  <div class="loan-card-header">
+                    <h3 class="loan-title">{{ loan.loanName }}</h3>
+                    <span :class="['loan-status', loan.status]">
+                      {{ getLoanStatusText(loan.status) }}
+                    </span>
+                  </div>
+                  
+                  <div class="loan-card-body">
+                    <div class="loan-info-row">
+                      <span class="info-label">贷款金额:</span>
+                      <span class="info-value amount">￥{{ loan.amount.toLocaleString() }}</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">年利率:</span>
+                      <span class="info-value rate">{{ loan.interestRate }}%</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">申请人:</span>
+                      <span class="info-value">{{ loan.applicantName }}</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">贷款银行:</span>
+                      <span class="info-value">{{ loan.bank }}</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">还款期限:</span>
+                      <span class="info-value">{{ loan.term }}个月</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">还款方式:</span>
+                      <span class="info-value">{{ getRepaymentMethodText(loan.repaymentMethod) }}</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">申请时间:</span>
+                      <span class="info-value">{{ loan.applicationDate }}</span>
+                    </div>
+                    <div class="loan-info-row">
+                      <span class="info-label">ID:</span>
+                      <span class="info-value loan-id">{{ loan.id }}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="loan-card-actions">
+                    <button @click="viewLoan(loan)" class="action-btn view">
+                      <span class="btn-icon">👁️</span>
+                      <span class="btn-text">查看</span>
+                    </button>
+                    <button @click="editLoan(loan)" class="action-btn edit">
+                      <span class="btn-icon">✏️</span>
+                      <span class="btn-text">编辑</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div v-else class="empty-loans-state">
@@ -1824,53 +1801,23 @@ export default {
 
 .dashboard-content {
   display: flex;
-  min-height: calc(100vh - 70px);
-}
-
-.sidebar {
-  width: 260px;
-  background: white;
-  border-right: 1px solid #e1e8ed;
-  padding: 20px 0;
-}
-
-.nav-menu {
-  display: flex;
-  flex-direction: column;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 25px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-left: 3px solid transparent;
-}
-
-.nav-item:hover {
-  background: #f8f9fa;
-}
-
-.nav-item.active {
-  background: #e8f5f4;
-  border-left-color: #4ecdc4;
-  color: #4ecdc4;
-}
-
-.nav-icon {
-  font-size: 18px;
-}
-
-.nav-text {
-  font-weight: 500;
+  min-height: calc(100vh - 80px);
+  position: relative;
+  z-index: 1;
 }
 
 .main-content {
-  flex: 1;
-  padding: 30px;
+  width: 100%;
+  padding: 40px;
   overflow-y: auto;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.main-content.full-width {
+  width: 100%;
+  flex: none;
 }
 
 .welcome-card {
@@ -2374,51 +2321,233 @@ export default {
   background: #0056b3;
 }
 
-.loans-table {
-  overflow-x: auto;
-}
-
-.loans-table table {
+/* 横向滚动贷款卡片布局 */
+.loans-scroll-container {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
+  overflow: hidden;
+  position: relative;
 }
 
-.loans-table th,
-.loans-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #eee;
+.loans-cards {
+  display: flex;
+  gap: 20px;
+  padding: 20px 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(78, 205, 196, 0.3) transparent;
 }
 
-.loans-table th {
-  background: #f8f9fa;
+.loans-cards::-webkit-scrollbar {
+  height: 8px;
+}
+
+.loans-cards::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.loans-cards::-webkit-scrollbar-thumb {
+  background: rgba(78, 205, 196, 0.3);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.loans-cards::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 205, 196, 0.5);
+}
+
+.loan-card {
+  min-width: 350px;
+  max-width: 350px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.loan-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.02) 0%, rgba(68, 160, 141, 0.02) 100%);
+  pointer-events: none;
+}
+
+.loan-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(78, 205, 196, 0.2);
+}
+
+.loan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(78, 205, 196, 0.1);
+}
+
+.loan-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  flex: 1;
+  margin-right: 15px;
+  line-height: 1.3;
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.loan-card-body {
+  margin-bottom: 20px;
+}
+
+.loan-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.loan-info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.loan-name {
+.info-value {
+  font-size: 14px;
   font-weight: 500;
-  color: #007bff;
+  color: #2d3748;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.amount {
+.info-value.amount {
+  font-weight: 700;
+  font-size: 16px;
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.info-value.rate {
+  font-weight: 700;
+  color: #f56565;
+  font-size: 15px;
+  padding: 4px 8px;
+  background: rgba(245, 101, 101, 0.1);
+  border-radius: 6px;
+}
+
+.info-value.loan-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: #a0aec0;
+  background: #f7fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.loan-card-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 2px solid rgba(78, 205, 196, 0.1);
+}
+
+.loan-card-actions .action-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
   font-weight: 600;
-  color: #28a745;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1.5px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.rate {
-  color: #dc3545;
-  font-weight: 500;
+.loan-card-actions .action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+  z-index: 0;
 }
 
-.term {
-  color: #6c757d;
+.loan-card-actions .action-btn:hover::before {
+  left: 100%;
 }
 
-.repayment-method {
-  text-align: center;
-  color: #495057;
+.loan-card-actions .action-btn .btn-icon,
+.loan-card-actions .action-btn .btn-text {
+  position: relative;
+  z-index: 1;
+}
+
+.loan-card-actions .action-btn .btn-icon {
+  font-size: 14px;
+}
+
+.loan-card-actions .action-btn.view {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.15) 0%, rgba(68, 160, 141, 0.15) 100%);
+  color: #2d7d32;
+  border-color: rgba(78, 205, 196, 0.3);
+}
+
+.loan-card-actions .action-btn.view:hover {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.25) 0%, rgba(68, 160, 141, 0.25) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+}
+
+.loan-card-actions .action-btn.edit {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(186, 104, 200, 0.15) 100%);
+  color: #7b1fa2;
+  border-color: rgba(156, 39, 176, 0.3);
+}
+
+.loan-card-actions .action-btn.edit:hover {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.25) 0%, rgba(186, 104, 200, 0.25) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(156, 39, 176, 0.3);
 }
 
 .loan-status {
@@ -3243,39 +3372,6 @@ export default {
     font-size: 20px;
   }
   
-  .dashboard-content {
-    flex-direction: column;
-  }
-  
-  .sidebar {
-    width: 100%;
-    padding: 20px 0;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .nav-menu {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0 20px;
-    gap: 10px;
-  }
-  
-  .nav-item {
-    margin: 0;
-    min-width: 120px;
-    justify-content: center;
-    transform: none !important;
-  }
-  
-  .nav-item:hover {
-    transform: none !important;
-  }
-  
-  .nav-item.active {
-    transform: none !important;
-  }
-  
   .main-content {
     padding: 30px 20px;
   }
@@ -3284,11 +3380,6 @@ export default {
     flex-direction: column;
     text-align: center;
     gap: 20px;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
   }
   
   .section-header {
@@ -3301,6 +3392,11 @@ export default {
     align-self: stretch;
     width: 100%;
     justify-content: center;
+  }
+  
+  .loan-card {
+    min-width: 320px;
+    max-width: 320px;
   }
 }
 
@@ -3347,15 +3443,6 @@ export default {
     font-size: 22px;
   }
   
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .stat-card {
-    padding: 20px;
-  }
-  
   .section-header {
     padding: 20px;
     border-radius: 15px;
@@ -3365,86 +3452,58 @@ export default {
     font-size: 22px;
   }
   
-  /* 表格移动端优化 */
-  .loans-table {
-    border-radius: 15px;
-    overflow: visible;
+  /* 横向卡片移动端优化 */
+  .loans-cards {
+    gap: 15px;
+    padding: 15px 0;
   }
   
-  .table-container {
-    overflow: visible;
-  }
-  
-  .loans-table table,
-  .loans-table tbody,
-  .loans-table tr,
-  .loans-table td {
-    display: block;
-  }
-  
-  .loans-table thead {
-    display: none;
-  }
-  
-  .loans-table tr {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 15px;
-    margin-bottom: 15px;
+  .loan-card {
+    min-width: 280px;
+    max-width: 280px;
     padding: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    position: relative;
   }
   
-  .loans-table tr:hover {
-    transform: none;
-    box-shadow: 0 12px 35px rgba(78, 205, 196, 0.15);
+  .loan-title {
+    font-size: 16px;
   }
   
-  .loans-table td {
-    border: none;
-    padding: 8px 0;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    white-space: normal;
-    word-wrap: break-word;
+  .loan-info-row {
+    padding: 6px 0;
   }
   
-  .loans-table td:before {
-    content: attr(data-label);
-    font-weight: 700;
-    color: #4a5568;
+  .info-label {
     font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    min-width: 80px;
-    margin-right: 15px;
   }
   
-  .loans-table td:last-child {
-    border-bottom: none;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+  .info-value {
+    font-size: 13px;
+    max-width: 55%;
+  }
+  
+  .info-value.amount {
+    font-size: 15px;
+  }
+  
+  .info-value.rate {
+    font-size: 14px;
+  }
+  
+  .loan-card-actions {
     gap: 8px;
   }
   
-  .action-btn {
-    margin-right: 8px;
-    margin-bottom: 5px;
+  .loan-card-actions .action-btn {
+    padding: 10px 12px;
+    font-size: 12px;
   }
   
-  /* 状态徽章优化 */
-  .loan-status {
-    margin-left: auto;
+  .loan-card-actions .action-btn .btn-text {
+    display: none;
   }
   
-  /* 金额显示优化 */
-  .amount {
+  .loan-card-actions .action-btn .btn-icon {
     font-size: 16px;
-    font-weight: 800;
   }
   
   /* 批量还款模态框优化 */
@@ -3488,24 +3547,44 @@ export default {
     padding: 15px;
   }
   
-  .loans-table tr {
-    padding: 15px;
-    margin-bottom: 12px;
+  .loans-cards {
+    gap: 12px;
+    padding: 12px 0;
   }
   
-  .loans-table td:before {
-    min-width: 70px;
+  .loan-card {
+    min-width: 260px;
+    max-width: 260px;
+    padding: 18px;
+  }
+  
+  .loan-title {
+    font-size: 15px;
+  }
+  
+  .loan-info-row {
+    padding: 5px 0;
+  }
+  
+  .info-label {
     font-size: 11px;
   }
   
-  .action-btn {
-    min-width: 32px;
-    height: 32px;
-    padding: 6px 8px;
+  .info-value {
+    font-size: 12px;
   }
   
-  .stat-card {
-    padding: 15px;
+  .info-value.amount {
+    font-size: 14px;
+  }
+  
+  .loan-card-actions .action-btn {
+    padding: 8px 10px;
+    min-width: 40px;
+  }
+  
+  .loan-card-actions .action-btn .btn-icon {
+    font-size: 14px;
   }
   
   .batch-payment-modal {
