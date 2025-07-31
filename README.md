@@ -13,8 +13,11 @@ loan-management-system-monorepo/
 │   ├── package.json            # 前端依赖配置
 │   ├── vite.config.js          # Vite 配置
 │   └── index.html              # 入口HTML
-├── backend/                     # 后端项目 (待添加)
-│   └── ...                     # 后端代码将在此处
+├── backend/                     # 后端项目 (Node.js + Express + MongoDB)
+│   ├── src/                    # 后端源代码
+│   ├── scripts/                # 启动和种子脚本
+│   ├── package.json            # 后端依赖配置
+│   └── README.md               # 后端项目说明
 ├── docs/                       # 项目文档
 ├── package.json                # 根项目配置
 ├── .gitignore                  # Git 忽略规则
@@ -67,15 +70,20 @@ npm run backend:build
 - Axios
 - Decimal.js
 
-### 后端 (待集成)
-- 待定
+### 后端
+- Node.js
+- Express.js
+- MongoDB
+- JWT 认证
+- Joi 数据验证
 
 ## 开发说明
 
 1. 前端项目位于 `frontend/` 目录
-2. 后端项目将位于 `backend/` 目录
+2. 后端项目位于 `backend/` 目录
 3. 使用 npm workspaces 管理多包项目
 4. 使用 concurrently 同时运行前后端服务
+5. 后端已完全集成，包含完整的API和数据库模型
 
 ## API 代理配置
 
