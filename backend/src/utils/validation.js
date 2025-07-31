@@ -74,16 +74,6 @@ const userLoginSchema = Joi.object({
 
 // 用户更新验证模式
 const userUpdateSchema = Joi.object({
-  email: Joi.string().email().optional().messages({
-    'string.email': '请输入有效的邮箱地址'
-  }),
-  real_name: Joi.string().trim().max(50).optional(),
-  phone: Joi.string()
-    .pattern(/^1[3-9]\d{9}$/)
-    .optional()
-    .messages({
-      'string.pattern.base': '请输入有效的手机号码'
-    }),
   avatar: Joi.string().uri().optional()
 });
 
@@ -177,8 +167,7 @@ const loanQuerySchema = paginationSchema.keys({
 });
 
 const userQuerySchema = paginationSchema.keys({
-  role: Joi.string().valid('admin', 'user').optional(),
-  status: Joi.string().valid('active', 'inactive', 'suspended').optional()
+  role: Joi.string().valid('admin', 'user').optional()
 });
 
 const logQuerySchema = paginationSchema.keys({

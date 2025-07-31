@@ -11,33 +11,15 @@ const userSchema = new mongoose.Schema({
     maxlength: [20, '用户名最多20个字符'],
     match: [/^[a-zA-Z0-9_]+$/, '用户名只能包含字母、数字和下划线']
   },
-  email: {
-    type: String,
-    unique: true,
-    sparse: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, '请输入有效的邮箱地址'],
-    default: null
-  },
+
   password: {
     type: String,
     required: [true, '密码是必填的'],
     minlength: [6, '密码至少6个字符'],
     select: false // 默认查询时不返回密码
   },
-  real_name: {
-    type: String,
-    trim: true,
-    maxlength: [50, '真实姓名最多50个字符'],
-    default: null
-  },
-  phone: {
-    type: String,
-    trim: true,
-    match: [/^1[3-9]\d{9}$/, '请输入有效的手机号码'],
-    default: null
-  },
+
+
   role: {
     type: String,
     enum: {
@@ -46,14 +28,7 @@ const userSchema = new mongoose.Schema({
     },
     default: 'user'
   },
-  status: {
-    type: String,
-    enum: {
-      values: ['active', 'inactive', 'suspended'],
-      message: '用户状态必须是active、inactive或suspended'
-    },
-    default: 'active'
-  },
+
   avatar: {
     type: String,
     default: null
@@ -95,8 +70,6 @@ const userSchema = new mongoose.Schema({
 
 // 索引
 userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
-userSchema.index({ status: 1 });
 userSchema.index({ role: 1 });
 
 // 密码加密中间件
@@ -151,9 +124,6 @@ userSchema.methods.resetLoginAttempts = function() {
   });
 };
 
-// 静态方法：查找可用用户
-userSchema.statics.findActiveUser = function(query) {
-  return this.findOne({ ...query, status: 'active' });
-};
+
 
 module.exports = mongoose.model('User', userSchema); 

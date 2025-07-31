@@ -153,6 +153,87 @@ export const userService = {
     } catch (error) {
       return handleApiError(error);
     }
+  },
+
+  async createUser(userData) {
+    try {
+      const response = await apiClient.post('/users', userData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async updateUser(userId, userData) {
+    try {
+      const response = await apiClient.put(`/users/${userId}`, userData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async getUserById(userId) {
+    try {
+      const response = await apiClient.get(`/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+
+
+  async changePassword(userId, passwordData) {
+    try {
+      const response = await apiClient.patch(`/users/${userId}/password`, passwordData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  }
+};
+
+// 系统日志服务
+export const logService = {
+  async getLogs(params = {}) {
+    try {
+      const response = await apiClient.get('/logs', { params });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async getLogById(logId) {
+    try {
+      const response = await apiClient.get(`/logs/${logId}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async getLogStatistics(days = 7) {
+    try {
+      const response = await apiClient.get('/logs/statistics', { 
+        params: { days } 
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async cleanupLogs(daysToKeep = 30) {
+    try {
+      const response = await apiClient.post('/logs/cleanup', { 
+        days_to_keep: daysToKeep 
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
   }
 };
 

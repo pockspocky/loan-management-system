@@ -48,8 +48,7 @@ router.post('/register', async (req, res, next) => {
     const user = new User({
       username,
       password,
-      role: 'user',
-      status: 'active'
+      role: 'user'
     });
     
     await user.save();
@@ -124,27 +123,7 @@ router.post('/login', async (req, res, next) => {
       });
     }
     
-    // 检查用户状态
-    if (user.status !== 'active') {
-      await SystemLog.create({
-        level: 'warning',
-        module: 'auth',
-        action: 'login_failed',
-        message: `登录失败: 账户已被禁用 - ${username}`,
-        user_id: user._id,
-        ip_address: getClientIP(req),
-        user_agent: req.get('User-Agent'),
-        request_method: req.method,
-        request_url: req.originalUrl
-      });
-      
-      return res.status(403).json({
-        success: false,
-        message: '账户已被禁用，请联系管理员',
-        code: 403,
-        timestamp: new Date().toISOString()
-      });
-    }
+
     
     // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password);

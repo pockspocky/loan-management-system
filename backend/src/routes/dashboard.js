@@ -12,7 +12,6 @@ router.get('/admin', authenticate, authorize('admin'), async (req, res, next) =>
   try {
     // 基础统计数据
     const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: 'active' });
     const totalLoans = await Loan.countDocuments();
     const pendingLoans = await Loan.countDocuments({ status: 'pending' });
     

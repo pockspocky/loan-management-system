@@ -34,19 +34,11 @@ const buildUserQuery = (query) => {
   const filter = {};
   
   if (query.search) {
-    filter.$or = [
-      { username: { $regex: query.search, $options: 'i' } },
-      { email: { $regex: query.search, $options: 'i' } },
-      { real_name: { $regex: query.search, $options: 'i' } }
-    ];
+    filter.username = { $regex: query.search, $options: 'i' };
   }
   
   if (query.role) {
     filter.role = query.role;
-  }
-  
-  if (query.status) {
-    filter.status = query.status;
   }
   
   return filter;
@@ -55,9 +47,9 @@ const buildUserQuery = (query) => {
 // 获取用户列表 (仅管理员)
 router.get('/', authenticate, authorize('admin'), validate(userQuerySchema, 'query'), async (req, res, next) => {
   try {
-    const { page, per_page, search, role, status, sort } = req.query;
+    const { page, per_page, search, role, sort } = req.query;
     
-    const filter = buildUserQuery({ search, role, status });
+    const filter = buildUserQuery({ search, role });
     
     // 排序处理
     const sortOrder = sort.startsWith('-') ? -1 : 1;
@@ -276,29 +268,21 @@ router.get('/:user_id', authenticate, async (req, res, next) => {
 // 创建用户 (仅管理员)
 router.post('/', authenticate, authorize('admin'), validate(userRegistrationSchema), async (req, res, next) => {
   try {
-    const { username, email, password, real_name, phone, role, status } = req.body;
+    const { username, password, role } = req.body;
     
-    // 检查用户名和邮箱是否已存在
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email }]
-    });
+    // 检查用户名是否已存在
+    const existingUser = await User.findOne({ username });
     
     if (existingUser) {
-      const field = existingUser.username === username ? 'username' : 'email';
-      const errors = {};
-      errors[field] = [`${field === 'username' ? '用户名' : '邮箱'}已存在`];
+      const errors = { username: ['用户名已存在'] };
       return next(new AppError('用户已存在', 409, 4090, errors));
     }
     
     // 创建新用户
     const user = new User({
       username,
-      email,
       password,
-      real_name,
-      phone,
-      role: role || 'user',
-      status: status || 'active'
+      role: role || 'user'
     });
     
     await user.save();
@@ -339,7 +323,7 @@ router.post('/', authenticate, authorize('admin'), validate(userRegistrationSche
 router.put('/:user_id', authenticate, validate(userUpdateSchema), async (req, res, next) => {
   try {
     const { user_id } = req.params;
-    const { email, real_name, phone, avatar } = req.body;
+    const { avatar } = req.body;
     
     // 非管理员只能更新自己的信息
     if (req.user.role !== 'admin' && user_id !== req.user._id.toString()) {
@@ -352,20 +336,8 @@ router.put('/:user_id', authenticate, validate(userUpdateSchema), async (req, re
       return next(new AppError('用户不存在', 404, 4040));
     }
     
-    // 检查邮箱是否被其他用户使用
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email, _id: { $ne: user_id } });
-      if (existingUser) {
-        const errors = { email: ['邮箱已被其他用户使用'] };
-        return next(new AppError('邮箱已存在', 409, 4090, errors));
-      }
-    }
-    
     // 更新用户信息
     const updateData = {};
-    if (email) updateData.email = email;
-    if (real_name !== undefined) updateData.real_name = real_name;
-    if (phone !== undefined) updateData.phone = phone;
     if (avatar !== undefined) updateData.avatar = avatar;
     
     const updatedUser = await User.findByIdAndUpdate(
@@ -517,68 +489,6 @@ router.patch('/:user_id/password', authenticate, validate(passwordChangeSchema),
   }
 });
 
-// 管理员修改用户状态
-router.patch('/:user_id/status', authenticate, authorize('admin'), async (req, res, next) => {
-  try {
-    const { user_id } = req.params;
-    const { status } = req.body;
-    
-    if (!['active', 'inactive', 'suspended'].includes(status)) {
-      return next(new AppError('无效的用户状态', 400, 4000));
-    }
-    
-    // 不能修改自己的状态
-    if (user_id === req.user._id.toString()) {
-      return next(new AppError('不能修改自己的状态', 400, 4000));
-    }
-    
-    const user = await User.findById(user_id);
-    
-    if (!user) {
-      return next(new AppError('用户不存在', 404, 4040));
-    }
-    
-    const oldStatus = user.status;
-    user.status = status;
-    await user.save();
-    
-    // 如果状态变为非活跃，清除刷新令牌
-    if (status !== 'active') {
-      user.refresh_tokens = [];
-      await user.save();
-    }
-    
-    // 记录状态修改日志
-    await SystemLog.createLog({
-      level: 'warning',
-      module: 'user',
-      action: 'change_user_status',
-      message: `管理员修改用户状态: ${user.username} (${oldStatus} -> ${status})`,
-      user_id: req.user._id,
-      username: req.user.username,
-      ip_address: req.ip || req.connection.remoteAddress,
-      user_agent: req.get('User-Agent'),
-      request_method: req.method,
-      request_url: req.originalUrl,
-      response_status: 200,
-      metadata: {
-        target_user_id: user._id,
-        target_username: user.username,
-        old_status: oldStatus,
-        new_status: status
-      }
-    });
-    
-    res.json({
-      success: true,
-      message: '用户状态修改成功',
-      data: { user: user.toJSON() },
-      code: 200,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+
 
 module.exports = router; 
