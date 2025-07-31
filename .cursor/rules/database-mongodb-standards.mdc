@@ -1,0 +1,140 @@
+---
+description: MongoDB and database operation standards
+---
+
+# MongoDB Database Standards
+
+Follow these patterns when working with MongoDB models and database operations.
+
+## Model Definition
+Use consistent Mongoose schema patterns:
+
+```javascript
+const mongoose = require('mongoose');
+
+const modelSchema = new mongoose.Schema({
+  // Field definitions with validation
+  field_name: {
+    type: String,
+    required: [true, 'Field is required'],
+    unique: true,
+    trim: true,
+    minlength: [3, 'Minimum length is 3'],
+    maxlength: [50, 'Maximum length is 50'],
+    match: [/regex/, 'Invalid format'],
+    default: null
+  },
+  
+  // Enum fields
+  status: {
+    type: String,
+    enum: {
+      values: ['active', 'inactive'],
+      message: 'Status must be active or inactive'
+    },
+    default: 'active'
+  }
+}, {
+  timestamps: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  },
+  toJSON: {
+    transform: function(doc, ret) {
+      delete ret.password;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
+
+// Indexes
+modelSchema.index({ field1: 1 });
+modelSchema.index({ field2: 1, field3: -1 });
+
+// Instance methods
+modelSchema.methods.methodName = function() {
+  // Implementation
+};
+
+// Static methods
+modelSchema.statics.staticMethod = function(query) {
+  return this.findOne({ ...query, status: 'active' });
+};
+
+module.exports = mongoose.model('ModelName', modelSchema);
+```
+
+## Database Operations
+Follow these patterns in routes and controllers:
+
+### Query Operations
+```javascript
+// Find with pagination
+const skip = (page - 1) * perPage;
+const items = await Model.find(filter)
+  .sort({ created_at: -1 })
+  .skip(skip)
+  .limit(perPage)
+  .select('-sensitive_field');
+
+const total = await Model.countDocuments(filter);
+```
+
+### Create Operations
+```javascript
+// Create with validation
+const item = new Model(data);
+await item.save();
+```
+
+### Update Operations
+```javascript
+// Update with validation
+const updatedItem = await Model.findByIdAndUpdate(
+  id,
+  updateData,
+  { new: true, runValidators: true }
+);
+```
+
+### Delete Operations
+```javascript
+// Soft delete preferred, hard delete when necessary
+await Model.findByIdAndDelete(id);
+```
+
+## Field Naming Conventions
+- Use snake_case for database fields: `created_at`, `user_id`, `real_name`
+- Use camelCase in JavaScript: map to snake_case in schemas
+- Consistent field names across models
+
+## Validation Patterns
+- Required fields with descriptive error messages
+- Length validation for strings
+- Regex validation for formats (email, phone)
+- Enum validation for restricted values
+- Custom validators when needed
+
+## Security Considerations
+- Never expose sensitive fields (passwords, tokens)
+- Use `select: false` for sensitive fields
+- Implement field-level security in toJSON transforms
+- Validate all inputs before database operations
+
+## Index Strategy
+- Index frequently queried fields
+- Compound indexes for multi-field queries
+- Unique indexes for constraint enforcement
+- Monitor query performance
+
+## Connection Management
+- Use single connection instance
+- Implement proper error handling
+- Use connection pooling
+- Handle connection events
+
+## File References
+- Model examples: [User.js](mdc:backend/src/models/User.js), [Loan.js](mdc:backend/src/models/Loan.js)
+- Database config: [database.js](mdc:backend/src/config/database.js)
+- System logging: [SystemLog.js](mdc:backend/src/models/SystemLog.js)

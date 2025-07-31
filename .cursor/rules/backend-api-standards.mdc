@@ -1,0 +1,125 @@
+---
+globs: backend/src/**/*
+---
+
+# Backend API Development Standards
+
+Follow these patterns when developing Node.js/Express API endpoints.
+
+## Route Structure
+Use consistent route organization:
+
+```javascript
+const express = require('express');
+const Model = require('../models/ModelName');
+const { authenticate, authorize } = require('../middleware/auth');
+const { validate, validationSchema } = require('../utils/validation');
+const AppError = require('../utils/AppError');
+
+const router = express.Router();
+
+// GET /resource - List resources
+router.get('/', authenticate, authorize('admin'), async (req, res, next) => {
+  try {
+    // Implementation
+    res.json({
+      success: true,
+      message: 'Success message',
+      data: result,
+      code: 200,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = router;
+```
+
+## Response Format
+Always use consistent response structure:
+
+```javascript
+// Success Response
+{
+  success: true,
+  message: "Operation successful",
+  data: {
+    // Response data
+  },
+  code: 200,
+  timestamp: "2024-01-01T00:00:00.000Z"
+}
+
+// Error Response  
+{
+  success: false,
+  message: "Error message",
+  code: 400,
+  error: {
+    statusCode: 400,
+    errorCode: 4000,
+    status: "fail",
+    isOperational: true,
+    errors: {}
+  },
+  errors: {},
+  timestamp: "2024-01-01T00:00:00.000Z"
+}
+```
+
+## Authentication & Authorization
+- Use `authenticate` middleware for protected routes
+- Use `authorize('role')` for role-based access
+- Check ownership with `checkOwnership` when appropriate
+
+## Validation
+- Use validation schemas from `../utils/validation`
+- Apply validation middleware: `validate(schema, 'body'|'query'|'params')`
+- Return detailed validation errors
+
+## Error Handling
+- Use `AppError` for operational errors
+- Pass errors to `next(error)` for central handling
+- Log important operations to `SystemLog`
+
+## Database Operations
+- Use try-catch blocks for all database operations
+- Implement proper pagination with `buildPaginationResponse()`
+- Use MongoDB aggregation for complex queries
+- Select appropriate fields with `.select()`
+
+## Security Practices
+- Never return sensitive fields (passwords, tokens)
+- Implement rate limiting where appropriate
+- Validate all user inputs
+- Use parameterized queries to prevent injection
+
+## System Logging
+Always log important operations:
+
+```javascript
+await SystemLog.createLog({
+  level: 'info',
+  module: 'user',
+  action: 'create_user',
+  message: `Created user: ${user.username}`,
+  user_id: req.user._id,
+  username: req.user.username,
+  ip_address: req.ip,
+  user_agent: req.get('User-Agent'),
+  request_method: req.method,
+  request_url: req.originalUrl,
+  response_status: 201,
+  metadata: {
+    created_user_id: user._id
+  }
+});
+```
+
+## File References
+- Route examples: [users.js](mdc:backend/src/routes/users.js), [loans.js](mdc:backend/src/routes/loans.js)
+- Models: [User.js](mdc:backend/src/models/User.js), [Loan.js](mdc:backend/src/models/Loan.js)
+- Middleware: [auth.js](mdc:backend/src/middleware/auth.js)
+- Utilities: [validation.js](mdc:backend/src/utils/validation.js), [AppError.js](mdc:backend/src/utils/AppError.js)
