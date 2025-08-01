@@ -67,12 +67,11 @@ print('系统日志集合索引创建完成');
 // 创建默认管理员用户
 print('创建默认管理员用户...');
 
-const bcrypt = require('bcryptjs');
-const adminPassword = bcrypt.hashSync('admin123', 10);
-
+// 注意：这里使用明文密码，实际应用中应该在应用层处理密码加密
+// 在Node.js应用中，密码会在保存前被bcrypt加密
 db.users.insertOne({
   username: 'admin',
-  password: adminPassword,
+  password: 'admin123', // 明文密码，应用层会处理加密
   role: 'admin',
   createdAt: new Date(),
   updatedAt: new Date()

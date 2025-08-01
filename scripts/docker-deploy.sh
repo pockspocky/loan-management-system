@@ -92,17 +92,14 @@ check_env_file() {
 deploy_dev() {
     log_info "开始开发模式部署..."
     
-    # 使用开发配置
-    export COMPOSE_FILE="docker-compose.yml:docker-compose.dev.yml"
-    
     if [[ $REBUILD == "true" ]]; then
         log_info "重新构建开发镜像..."
-        docker-compose down
-        docker-compose build --no-cache
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache
     fi
     
     log_info "启动开发环境..."
-    docker-compose up -d
+    docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
     
     log_success "开发环境部署完成！"
     show_service_info
@@ -137,30 +134,51 @@ show_service_info() {
     echo ""
     
     log_info "服务状态:"
-    docker-compose ps
+    if [[ -f docker-compose.dev.yml ]]; then
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml ps
+    else
+        docker-compose ps
+    fi
 }
 
 # 查看服务状态
 show_status() {
     log_info "服务状态:"
-    docker-compose ps
+    if [[ -f docker-compose.dev.yml ]]; then
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml ps
+    else
+        docker-compose ps
+    fi
     echo ""
     
     log_info "服务健康状态:"
-    docker-compose exec -T backend curl -f http://localhost:8080/api/v1/health || log_warning "后端服务不健康"
-    docker-compose exec -T frontend curl -f http://localhost:80/health || log_warning "前端服务不健康"
+    if [[ -f docker-compose.dev.yml ]]; then
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec -T backend curl -f http://localhost:8080/api/v1/health || log_warning "后端服务不健康"
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec -T frontend curl -f http://localhost:80/health || log_warning "前端服务不健康"
+    else
+        docker-compose exec -T backend curl -f http://localhost:8080/api/v1/health || log_warning "后端服务不健康"
+        docker-compose exec -T frontend curl -f http://localhost:80/health || log_warning "前端服务不健康"
+    fi
 }
 
 # 查看日志
 show_logs() {
     log_info "显示服务日志 (按Ctrl+C退出):"
-    docker-compose logs -f
+    if [[ -f docker-compose.dev.yml ]]; then
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+    else
+        docker-compose logs -f
+    fi
 }
 
 # 停止服务
 stop_services() {
     log_info "停止所有服务..."
-    docker-compose down
+    if [[ -f docker-compose.dev.yml ]]; then
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+    else
+        docker-compose down
+    fi
     log_success "所有服务已停止"
 }
 
@@ -171,7 +189,11 @@ clean_docker() {
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         log_info "停止并删除容器..."
-        docker-compose down -v --remove-orphans
+        if [[ -f docker-compose.dev.yml ]]; then
+            docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans
+        else
+            docker-compose down -v --remove-orphans
+        fi
         
         log_info "删除镜像..."
         docker rmi $(docker images "loan-*" -q) 2>/dev/null || true
@@ -191,8 +213,14 @@ wait_for_services() {
     
     # 等待数据库启动
     for i in {1..30}; do
-        if docker-compose exec -T mongodb mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
-            break
+        if [[ -f docker-compose.dev.yml ]]; then
+            if docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec -T mongodb mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
+                break
+            fi
+        else
+            if docker-compose exec -T mongodb mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
+                break
+            fi
         fi
         sleep 2
     done
