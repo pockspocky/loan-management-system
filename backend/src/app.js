@@ -20,6 +20,7 @@ const uploadRoutes = require('./routes/upload');
 const logRoutes = require('./routes/logs');
 const dashboardRoutes = require('./routes/dashboard');
 const taskRoutes = require('./routes/tasks');
+const healthRoutes = require('./routes/health');
 
 const app = express();
 
@@ -142,23 +143,7 @@ app.use(`/api/${apiVersion}/upload`, uploadRoutes);
 app.use(`/api/${apiVersion}/logs`, logRoutes);
 app.use(`/api/${apiVersion}/dashboard`, dashboardRoutes);
 app.use(`/api/${apiVersion}/tasks`, taskRoutes);
-
-// 健康检查端点
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: '服务运行正常',
-    data: {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV,
-      version: process.env.npm_package_version || '1.0.0'
-    },
-    code: 200,
-    timestamp: new Date().toISOString()
-  });
-});
+app.use(`/api/${apiVersion}/health`, healthRoutes);
 
 // 根路径
 app.get('/', (req, res) => {
