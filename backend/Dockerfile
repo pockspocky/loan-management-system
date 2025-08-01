@@ -4,6 +4,14 @@ FROM node:16-alpine
 # 设置工作目录
 WORKDIR /app
 
+# 清除可能的代理设置
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+ENV http_proxy=
+ENV https_proxy=
+ENV NO_PROXY=*
+ENV no_proxy=*
+
 # 创建非root用户
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
@@ -11,8 +19,12 @@ RUN adduser -S nodejs -u 1001
 # 复制package.json和package-lock.json（如果存在）
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production && npm cache clean --force
+# 清除npm代理配置并安装依赖
+RUN npm config delete proxy && \
+    npm config delete https-proxy && \
+    npm config set registry https://registry.npmmirror.com/ && \
+    npm ci --only=production && \
+    npm cache clean --force
 
 # 复制源代码
 COPY . .
