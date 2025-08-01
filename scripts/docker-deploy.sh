@@ -92,6 +92,13 @@ check_env_file() {
 deploy_dev() {
     log_info "开始开发模式部署..."
     
+    # 检查网络连接
+    if ! docker pull hello-world:latest &>/dev/null; then
+        log_warning "网络连接问题，尝试使用本地模式..."
+        deploy_local
+        return
+    fi
+    
     if [[ $REBUILD == "true" ]]; then
         log_info "重新构建开发镜像..."
         docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
@@ -102,6 +109,23 @@ deploy_dev() {
     docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
     
     log_success "开发环境部署完成！"
+    show_service_info
+}
+
+# 本地模式部署（网络问题时的备用方案）
+deploy_local() {
+    log_info "开始本地模式部署..."
+    
+    if [[ $REBUILD == "true" ]]; then
+        log_info "重新构建本地镜像..."
+        docker-compose -f docker-compose.local.yml down
+        docker-compose -f docker-compose.local.yml build --no-cache
+    fi
+    
+    log_info "启动本地环境..."
+    docker-compose -f docker-compose.local.yml up -d
+    
+    log_success "本地环境部署完成！"
     show_service_info
 }
 
