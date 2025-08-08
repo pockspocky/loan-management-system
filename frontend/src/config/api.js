@@ -1,10 +1,11 @@
 // API配置
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api/v1' : 'https://zlyoszudwbcc.sealoshzh.site/api/v1'),
+  BASE_URL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api/v1' : 'http://127.0.0.1:8080/api/v1'),
   TIMEOUT: 30000
 };
 
 // 生成请求ID
+
 export function generateRequestId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }

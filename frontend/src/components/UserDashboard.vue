@@ -819,7 +819,7 @@
 
 <script>
 import { ref, computed, reactive } from 'vue'
-import { loanCalculatorService, repaymentService } from '../services/index.js'
+import { loanCalculatorService, repaymentService, loanService } from '../services/index.js'
 import { showAlert, showSuccess, showError, showWarning, showConfirm } from '../utils/dialogService.js'
 import PrecisionMath from '../utils/precisionMath.js'
 
@@ -974,7 +974,6 @@ export default {
       error.value = null
       
       try {
-        const { loanService } = await import('../services/index.js')
         const result = await loanService.getLoans()
         
         console.log('获取贷款列表响应:', result)
@@ -1666,6 +1665,9 @@ export default {
 .user-dashboard {
   min-height: 100vh;
   background: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .user-header {
@@ -1814,11 +1816,20 @@ export default {
 .stat-card {
   background: white;
   padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   gap: 20px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  border-color: rgba(78, 205, 196, 0.2);
 }
 
 .stat-icon {
@@ -1965,11 +1976,42 @@ export default {
 .form-group textarea,
 .form-group select {
   width: 100%;
-  padding: 12px;
+  padding: 12px 16px;
   border: 2px solid #e1e8ed;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 16px;
   transition: all 0.3s ease;
+  background: #fff;
+  color: #2c3e50;
+  line-height: 1.5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #a0aec0;
+}
+
+.form-group input:hover,
+.form-group textarea:hover,
+.form-group select:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
 }
 
 .form-group input:focus,
@@ -2111,21 +2153,130 @@ export default {
 }
 
 .action-btn {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.action-btn.view {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid rgba(25, 118, 210, 0.1);
+}
+
+.action-btn.view:hover {
+  background: #bbdefb;
 }
 
 .action-btn.edit {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #fff3e0;
+  color: #f57c00;
+  border: 1px solid rgba(245, 124, 0, 0.1);
+}
+
+.action-btn.edit:hover {
+  background: #ffe0b2;
 }
 
 .action-btn.delete {
   background: #ffebee;
   color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.1);
+}
+
+.action-btn.delete:hover {
+  background: #ffcdd2;
+}
+
+/* 状态标签美化 */
+.loan-status,
+.payment-status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.loan-status::before,
+.payment-status::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.loan-status.pending,
+.payment-status.pending {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.loan-status.pending::before,
+.payment-status.pending::before {
+  background: #f57f17;
+}
+
+.loan-status.approved,
+.payment-status.paid {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.loan-status.approved::before,
+.payment-status.paid::before {
+  background: #2e7d32;
+}
+
+.loan-status.completed {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.loan-status.completed::before {
+  background: #1565c0;
+}
+
+.payment-status.overdue {
+  background: #fce4ec;
+  color: #c2185b;
+}
+
+.payment-status.overdue::before {
+  background: #c2185b;
+}
+
+.payment-status.partial {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.payment-status.partial::before {
+  background: #7b1fa2;
 }
 
 .modal-overlay {
@@ -2134,22 +2285,91 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
 }
 
 .modal-content {
   background: white;
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 20px;
+  padding: 30px;
   width: 90%;
   max-width: 500px;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: slideUp 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.modal-content h3 {
+  margin: 0 0 25px 0;
+  color: #2c3e50;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+}
+
+.modal-content h3::after {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  margin: 12px auto 0;
+  border-radius: 2px;
 }
 
 .modal-content h3 {
@@ -2285,23 +2505,80 @@ export default {
   overflow-x: auto;
 }
 
+.loans-table {
+  overflow-x: auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-top: 16px;
+}
+
 .loans-table table {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
 }
 
 .loans-table th,
 .loans-table td {
-  padding: 12px;
+  padding: 16px;
   text-align: left;
   border-bottom: 1px solid #eee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .loans-table th {
   background: #f8f9fa;
   font-weight: 600;
   color: #333;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid #e1e8ed;
+}
+
+.loans-table tr:hover td {
+  background: #f8f9fa;
+}
+
+.loans-table td {
+  transition: all 0.2s ease;
+}
+
+/* 处理长文本 */
+.loans-table .loan-name,
+.loans-table .bank,
+.loans-table .applicant-name {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loans-table .amount,
+.loans-table .rate,
+.loans-table .term {
+  text-align: right;
+  font-family: monospace;
+}
+
+/* 添加响应式滚动提示 */
+@media (max-width: 768px) {
+  .loans-table::after {
+    content: "← 左右滑动查看更多 →";
+    display: block;
+    text-align: center;
+    padding: 10px;
+    color: #666;
+    font-size: 12px;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+  }
 }
 
 .loan-name {

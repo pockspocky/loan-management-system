@@ -100,7 +100,7 @@ router.post('/login', async (req, res, next) => {
     }
     
     // 查找用户（仅支持用户名登录）
-    const user = await User.findOne({ username }).select('+password');
+    const user = await User.findOne({ username }).select('+password').exec();
     
     if (!user) {
       // 记录登录失败日志
